@@ -1,4 +1,4 @@
 march
 =====
 
-Operation transformation on a simplified JavaScript object model.
+Operation transformation on the least common object model of Java and JavaScript.
