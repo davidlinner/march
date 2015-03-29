@@ -11,7 +11,7 @@ import org.march.data.CommandException;
 import org.march.data.Constant;
 import org.march.data.ObjectException;
 import org.march.data.command.Set;
-import org.march.sync.channel.ChannelException;
+import org.march.sync.endpoint.EndpointException;
 import org.march.sync.transform.Transformer;
 
 public class SynchronizationTest {
@@ -55,7 +55,7 @@ public class SynchronizationTest {
     }
     
     @After
-    public void clear() throws ChannelException{
+    public void clear() throws EndpointException{
         up1.close();
         down1.close();
 
@@ -64,7 +64,7 @@ public class SynchronizationTest {
     }
     
     @Test
-    public void testOneWaySynchronization() throws ChannelException, MemberException, ObjectException, CommandException {
+    public void testOneWaySynchronization() throws EndpointException, MemberException, ObjectException, CommandException {
         member1.apply(null, new Set("a", a));
         
         up1.flush();
@@ -77,7 +77,7 @@ public class SynchronizationTest {
     }
     
     @Test
-    public void testTwoWaySynchronizationNoConflict() throws ChannelException, MemberException, ObjectException, CommandException {
+    public void testTwoWaySynchronizationNoConflict() throws EndpointException, MemberException, ObjectException, CommandException {
         member1.apply(null, new Set("a", a));
         member2.apply(null, new Set("b", b));
         
@@ -92,7 +92,7 @@ public class SynchronizationTest {
     }
 
     @Test
-    public void testTwoWaySynchronizationOnConflict() throws ChannelException, MemberException, ObjectException, CommandException {
+    public void testTwoWaySynchronizationOnConflict() throws EndpointException, MemberException, ObjectException, CommandException {
         member1.apply(null, new Set("a", a));
         member2.apply(null, new Set("a", b));
         

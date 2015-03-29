@@ -7,18 +7,18 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.march.data.CommandException;
 import org.march.data.Model;
 import org.march.data.ObjectException;
+import org.march.data.Operation;
 import org.march.data.simple.SimpleModel;
-import org.march.sync.channel.ChannelException;
-import org.march.sync.channel.LeaderChannel;
-import org.march.sync.channel.Message;
-import org.march.sync.channel.MessageHandler;
-import org.march.sync.channel.Operation;
-import org.march.sync.channel.OutboundChannel;
+import org.march.sync.endpoint.EndpointException;
+import org.march.sync.endpoint.LeaderEndpoint;
+import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.MessageHandler;
+import org.march.sync.endpoint.OutboundEndpoint;
 import org.march.sync.transform.Transformer;
 
 public class Leader {
     
-    private HashMap<UUID, LeaderChannel> channels;    
+    private HashMap<UUID, LeaderEndpoint> channels;    
    
     private Transformer transformer;
     
@@ -29,7 +29,7 @@ public class Leader {
     private ReentrantLock lock;
     
     public Leader(Transformer transformer){
-        this.channels    = new HashMap<UUID, LeaderChannel>();               
+        this.channels    = new HashMap<UUID, LeaderEndpoint>();               
         this.clock       = new Clock();
         
         this.transformer    = transformer;
@@ -40,7 +40,7 @@ public class Leader {
     
     public void subscribe(UUID member){
         if(!this.channels.containsKey(member)){
-            final LeaderChannel channel = new LeaderChannel(this.transformer, this.lock);
+            final LeaderEndpoint channel = new LeaderEndpoint(this.transformer, this.lock);
             
             this.channels.put(member, channel);        
             
@@ -53,17 +53,17 @@ public class Leader {
     }
     
     public void unsubscribe(UUID member){        
-        LeaderChannel channel = this.channels.remove(member);
+        LeaderEndpoint channel = this.channels.remove(member);
         if(channel != null){
             channel.offInbound();
         }        
     }
     
-    public OutboundChannel getOutbound(UUID member){
+    public OutboundEndpoint getOutbound(UUID member){
         return this.channels.get(member);     
     }
     
-    private void inbound(LeaderChannel originChannel, Message message){        
+    private void inbound(LeaderEndpoint originChannel, Message message){        
         this.clock.tick();
         
         try {
@@ -80,7 +80,7 @@ public class Leader {
             return;
         } 
         
-        for(LeaderChannel channel: this.channels.values()){
+        for(LeaderEndpoint channel: this.channels.values()){
             if(channel != originChannel){
                 
                 //TODO: filter Nil type commands - no need to forward
@@ -92,7 +92,7 @@ public class Leader {
                               
                 try {
                     channel.send(new Message(message.getMember(), channel.getRemoteTime(), this.clock.getTime(), operations));
-                } catch (ChannelException e) {
+                } catch (EndpointException e) {
                     // kill channel
                 }
             }

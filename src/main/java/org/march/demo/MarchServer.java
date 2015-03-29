@@ -9,7 +9,7 @@ import java.net.SocketTimeoutException;
 import java.util.UUID;
 
 import org.march.sync.Leader;
-import org.march.sync.channel.OutboundChannel;
+import org.march.sync.endpoint.OutboundEndpoint;
 import org.march.sync.transform.Transformer;
 
 public class MarchServer implements Runnable {
@@ -42,7 +42,7 @@ public class MarchServer implements Runnable {
                 
                 leader.subscribe(id);
                 
-                OutboundChannel channel = leader.getOutbound(id);
+                OutboundEndpoint channel = leader.getOutbound(id);
                 
                 (new Thread(new ChannelConnector(channel, in, out))).start(); 
                 

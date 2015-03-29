@@ -1,8 +1,10 @@
-package org.march.sync.channel;
+package org.march.sync.endpoint;
 
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.UUID;
+
+import org.march.data.Operation;
 
 
 public class Message implements Cloneable, Serializable{

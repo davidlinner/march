@@ -1,9 +1,6 @@
-package org.march.sync.channel;
+package org.march.data;
 
 import java.io.Serializable;
-
-import org.march.data.Command;
-import org.march.data.Pointer;
 
 public class Operation implements Cloneable, Serializable {
     

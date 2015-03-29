@@ -9,14 +9,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.march.data.Constant;
+import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.command.Insert;
 import org.march.sync.Clock;
-import org.march.sync.channel.ChannelException;
-import org.march.sync.channel.MemberChannel;
-import org.march.sync.channel.Message;
-import org.march.sync.channel.MessageHandler;
-import org.march.sync.channel.Operation;
+import org.march.sync.endpoint.EndpointException;
+import org.march.sync.endpoint.MemberEndpoint;
+import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.MessageHandler;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
 
@@ -47,7 +47,7 @@ public class MemberChannelTest {
         TRANSFORMER.addInclusion(new InsertInsertInclusion());
     }
         
-    private MemberChannel channel;
+    private MemberEndpoint channel;
        
     final LinkedList<Message> inboundBuffer = new LinkedList<Message>();
     final LinkedList<Message> outboundBuffer = new LinkedList<Message>();
@@ -58,7 +58,7 @@ public class MemberChannelTest {
         inboundBuffer.clear();
         outboundBuffer.clear();
 
-        channel = new MemberChannel(TRANSFORMER);
+        channel = new MemberEndpoint(TRANSFORMER);
         channel.onOutbound(new MessageHandler() {            
             public void handle(Message message) {
                 outboundBuffer.add(message);
@@ -79,7 +79,7 @@ public class MemberChannelTest {
     }
     
     @Test
-    public void testMemberChannelSend() throws ChannelException {     
+    public void testMemberChannelSend() throws EndpointException {     
         
         Clock clk = new Clock();
         
@@ -97,7 +97,7 @@ public class MemberChannelTest {
     }     
     
     @Test
-    public void testMemberChannelReceive() throws ChannelException {     
+    public void testMemberChannelReceive() throws EndpointException {     
         
         Clock clk = new Clock();
               
@@ -116,7 +116,7 @@ public class MemberChannelTest {
     }
         
     @Test
-    public void testMemberChannelSynchronizationOnContextInequivalence() throws ChannelException {     
+    public void testMemberChannelSynchronizationOnContextInequivalence() throws EndpointException {     
         
         Clock cm = new Clock();
         Clock cl = new Clock();       
@@ -136,7 +136,7 @@ public class MemberChannelTest {
     }
     
     @Test
-    public void testMemberChannelSynchronizationOnContextEquivalence() throws ChannelException {             
+    public void testMemberChannelSynchronizationOnContextEquivalence() throws EndpointException {             
         Clock cm = new Clock();
         Clock cl = new Clock();        
                

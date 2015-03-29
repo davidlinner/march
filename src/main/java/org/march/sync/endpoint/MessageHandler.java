@@ -1,4 +1,4 @@
-package org.march.sync.channel;
+package org.march.sync.endpoint;
 
 
 public interface MessageHandler {

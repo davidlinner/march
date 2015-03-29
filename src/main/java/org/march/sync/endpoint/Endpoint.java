@@ -1,4 +1,4 @@
-package org.march.sync.channel;
+package org.march.sync.endpoint;
 
 import java.util.LinkedList;
 import java.util.concurrent.locks.ReentrantLock;
@@ -6,7 +6,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.march.sync.Clock;
 import org.march.sync.transform.Transformer;
 
-public abstract class TransformingChannel implements InboundChannel, OutboundChannel {
+public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
   
     private Transformer transformer;
     private int remoteTime;
@@ -18,7 +18,7 @@ public abstract class TransformingChannel implements InboundChannel, OutboundCha
     
     private ReentrantLock lock;
     
-    public TransformingChannel(Transformer transformer, ReentrantLock lock) {
+    public Endpoint(Transformer transformer, ReentrantLock lock) {
         this.transformer    = transformer;
         this.lock = lock;
         
@@ -31,11 +31,11 @@ public abstract class TransformingChannel implements InboundChannel, OutboundCha
     }
 
     
-    public TransformingChannel(Transformer transformer) {
+    public Endpoint(Transformer transformer) {
         this(transformer, new ReentrantLock());
     }
 
-    public void receive(Message message) throws ChannelException {
+    public void receive(Message message) throws EndpointException {
        lock.lock();
         
         // remove messages member has seen already
@@ -53,21 +53,20 @@ public abstract class TransformingChannel implements InboundChannel, OutboundCha
                 setLocalTime(message, getLocalTime(enqueued));
             }
             
-            this.remoteTime = getRemoteTime(message); // make sure time is preserved on empty queue
-            
+            this.remoteTime = getRemoteTime(message); // make sure time is preserved on empty queue            
            
             for(MessageHandler handler: inboundHandlers){
                 handler.handle(message);
             }
             
         } catch (Exception e) {
-            throw new ChannelException(e);
+            throw new EndpointException(e);
         } finally {
             lock.unlock();            
         }                
     }
 
-    public OutboundChannel onOutbound(MessageHandler handler) {
+    public OutboundEndpoint onOutbound(MessageHandler handler) {
         if(handler != null && !outboundHandlers.contains(handler)){
             outboundHandlers.add(handler);
         }
@@ -75,19 +74,19 @@ public abstract class TransformingChannel implements InboundChannel, OutboundCha
         return this;
     }
     
-    public OutboundChannel offOutbound(MessageHandler handler) {
+    public OutboundEndpoint offOutbound(MessageHandler handler) {
         outboundHandlers.remove(handler);
         return this;
     }
     
-    public OutboundChannel offOutbound() {
+    public OutboundEndpoint offOutbound() {
         outboundHandlers.clear();
         return this;
     }
 
-    public void send(Message message) throws ChannelException {
+    public void send(Message message) throws EndpointException {
         if(getRemoteTime(message) != this.remoteTime) {
-            throw new ChannelException("Message is out of synchronization.");
+            throw new EndpointException("Message is out of synchronization.");
         }
         
         boolean isExclsuive = lock.isHeldByCurrentThread();        
@@ -107,7 +106,7 @@ public abstract class TransformingChannel implements InboundChannel, OutboundCha
         }
     }
 
-    public InboundChannel onInbound(MessageHandler handler) {
+    public InboundEndpoint onInbound(MessageHandler handler) {
         if(handler != null && !inboundHandlers.contains(handler)){
             inboundHandlers.add(handler);
         }
@@ -115,12 +114,12 @@ public abstract class TransformingChannel implements InboundChannel, OutboundCha
         return this;
     }
     
-    public InboundChannel offInbound(MessageHandler handler) {
+    public InboundEndpoint offInbound(MessageHandler handler) {
         inboundHandlers.remove(handler);
         return this;
     }
 
-    public InboundChannel offInbound() {
+    public InboundEndpoint offInbound() {
         inboundHandlers.clear();
         return this;
     }

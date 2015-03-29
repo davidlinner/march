@@ -5,7 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.march.data.Command;
-import org.march.sync.channel.Operation;
+import org.march.data.Operation;
 
 public class Transformer {
     

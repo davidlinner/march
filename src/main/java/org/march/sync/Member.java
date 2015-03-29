@@ -9,14 +9,14 @@ import org.march.data.CommandException;
 import org.march.data.Data;
 import org.march.data.Model;
 import org.march.data.ObjectException;
+import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.simple.SimpleModel;
-import org.march.sync.channel.ChannelException;
-import org.march.sync.channel.MemberChannel;
-import org.march.sync.channel.Message;
-import org.march.sync.channel.MessageHandler;
-import org.march.sync.channel.Operation;
-import org.march.sync.channel.OutboundChannel;
+import org.march.sync.endpoint.EndpointException;
+import org.march.sync.endpoint.MemberEndpoint;
+import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.MessageHandler;
+import org.march.sync.endpoint.OutboundEndpoint;
 import org.march.sync.transform.Transformer;
 
 
@@ -26,7 +26,7 @@ public class Member {
     
     private Clock clock;
     
-    private MemberChannel channel;
+    private MemberEndpoint channel;
     
     private Model model;
     
@@ -36,7 +36,7 @@ public class Member {
         this.name = name; 
         
         clock   = new Clock();
-        channel = new MemberChannel(transformer);
+        channel = new MemberEndpoint(transformer);
         
         model   = new SimpleModel();
                 
@@ -57,7 +57,7 @@ public class Member {
         });
     }
 
-    public OutboundChannel getOutbound(){
+    public OutboundEndpoint getOutbound(){
         return this.channel;
     }
         
@@ -69,7 +69,7 @@ public class Member {
                     new Operation[]{new Operation(pointer, command)});
             
             channel.send(message);
-        } catch (ChannelException e) {
+        } catch (EndpointException e) {
             //TODO: check reinit on channelexception
             throw new MemberException(e);
         } catch (ObjectException|CommandException e){

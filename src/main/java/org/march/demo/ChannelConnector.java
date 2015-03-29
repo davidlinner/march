@@ -4,19 +4,19 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import org.march.sync.channel.ChannelException;
-import org.march.sync.channel.Message;
-import org.march.sync.channel.MessageHandler;
-import org.march.sync.channel.OutboundChannel;
+import org.march.sync.endpoint.EndpointException;
+import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.MessageHandler;
+import org.march.sync.endpoint.OutboundEndpoint;
 
 public class ChannelConnector implements Runnable{
         
     private ObjectInputStream in;
     private ObjectOutputStream out;
     
-    private OutboundChannel channel;
+    private OutboundEndpoint channel;
     
-    public ChannelConnector(OutboundChannel channel,  ObjectInputStream in, ObjectOutputStream out) throws IOException{       
+    public ChannelConnector(OutboundEndpoint channel,  ObjectInputStream in, ObjectOutputStream out) throws IOException{       
         this.in     = in;
         this.out    = out;
         
@@ -42,7 +42,7 @@ public class ChannelConnector implements Runnable{
                 if(message != null){                    
                     channel.receive(message);
                 }
-            } catch (ClassNotFoundException | IOException | ChannelException e) {
+            } catch (ClassNotFoundException | IOException | EndpointException e) {
                 e.printStackTrace();
                 break;
             } 

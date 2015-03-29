@@ -25,7 +25,7 @@ import org.march.data.command.Type;
 import org.march.sync.CommandHandler;
 import org.march.sync.Member;
 import org.march.sync.MemberException;
-import org.march.sync.channel.OutboundChannel;
+import org.march.sync.endpoint.OutboundEndpoint;
 import org.march.sync.transform.Transformer;
 
 public class MarchClient {
@@ -58,7 +58,7 @@ public class MarchClient {
             
             Member member = new Member(id, new Transformer());
             
-            final OutboundChannel channel = member.getOutbound();
+            final OutboundEndpoint channel = member.getOutbound();
                        
             out.writeObject(id);
             out.flush();

@@ -1,16 +1,16 @@
-package org.march.sync.channel;
+package org.march.sync.endpoint;
 
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.march.sync.transform.Transformer;
 
-public class MemberChannel extends TransformingChannel {
+public class MemberEndpoint extends Endpoint {
 
-    public MemberChannel(Transformer transformer) {
+    public MemberEndpoint(Transformer transformer) {
         super(transformer);
     }
     
-    public MemberChannel(Transformer transformer, ReentrantLock lock) {
+    public MemberEndpoint(Transformer transformer, ReentrantLock lock) {
         super(transformer, lock);
     }
 

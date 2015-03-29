@@ -9,14 +9,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.march.data.Constant;
+import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.command.Insert;
 import org.march.sync.Clock;
-import org.march.sync.channel.ChannelException;
-import org.march.sync.channel.LeaderChannel;
-import org.march.sync.channel.Message;
-import org.march.sync.channel.MessageHandler;
-import org.march.sync.channel.Operation;
+import org.march.sync.endpoint.EndpointException;
+import org.march.sync.endpoint.LeaderEndpoint;
+import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.MessageHandler;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
 
@@ -47,7 +47,7 @@ public class LeaderChannelTest {
         TRANSFORMER.addInclusion(new InsertInsertInclusion());
     }
         
-    private LeaderChannel channel;
+    private LeaderEndpoint channel;
        
     final LinkedList<Message> inboundBuffer = new LinkedList<Message>();
     final LinkedList<Message> outboundBuffer = new LinkedList<Message>();
@@ -55,7 +55,7 @@ public class LeaderChannelTest {
     
     @Before
     public void setupChannel(){
-        channel = new LeaderChannel(TRANSFORMER);
+        channel = new LeaderEndpoint(TRANSFORMER);
         channel.onOutbound(new MessageHandler() {            
             public void handle(Message message) {
                 outboundBuffer.add(message);
@@ -76,7 +76,7 @@ public class LeaderChannelTest {
     }
     
     @Test
-    public void testLeaderChannelSend() throws ChannelException {     
+    public void testLeaderChannelSend() throws EndpointException {     
         
         Clock clk = new Clock();
         
@@ -95,7 +95,7 @@ public class LeaderChannelTest {
     
     
     @Test
-    public void testLeaderChannelReceive() throws ChannelException {     
+    public void testLeaderChannelReceive() throws EndpointException {     
         
         Clock clk = new Clock();
               
@@ -114,7 +114,7 @@ public class LeaderChannelTest {
     }
         
     @Test
-    public void testLeaderChannelSynchronizationOnContextInequivalence() throws ChannelException {     
+    public void testLeaderChannelSynchronizationOnContextInequivalence() throws EndpointException {     
         
         Clock cl = new Clock();
         Clock cm = new Clock();       
@@ -134,7 +134,7 @@ public class LeaderChannelTest {
     }
     
     @Test
-    public void testLeaderChannelSynchronizationOnContextEquivalence() throws ChannelException {             
+    public void testLeaderChannelSynchronizationOnContextEquivalence() throws EndpointException {             
         Clock cl = new Clock();
         Clock cm = new Clock();        
                

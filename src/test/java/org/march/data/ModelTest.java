@@ -2,6 +2,9 @@ package org.march.data;
 
 import static org.junit.Assert.*;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.march.data.command.Construct;
@@ -93,6 +96,42 @@ public class ModelTest {
         
         model.apply(p, new Delete(0));
         assertNull(model.find(p, 0));
+    }
+    
+    @Test
+    public void testSerializeAll() throws ObjectException, CommandException {
+        Pointer p1 = Pointer.uniquePointer(),
+        		p2 = Pointer.uniquePointer();
+        
+        model.apply(p1, new Construct(Type.SEQUENCE));
+        model.apply(p2, new Construct(Type.HASH));
+        
+        Constant one = new Constant(1);
+        Constant two = new Constant(2);
+
+        model.apply(p1, new Insert(0, one));        
+        model.apply(p1, new Insert(0, two));
+                
+        model.apply(p2, new Set("one", one));
+        model.apply(p2, new Set("two", two));
+        
+        
+        List<Operation> operations = Arrays.asList(model.serialize());
+        
+        int c1 = operations.indexOf(new Operation(p1,  new Construct(Type.SEQUENCE))),
+        	c2 = operations.indexOf(new Operation(p2,  new Construct(Type.HASH))),
+        	s1 = operations.indexOf(new Operation(p2,  new Set("one", one))),
+        	i1 = operations.indexOf(new Operation(p1,  new Insert(1, one)));
+        
+        assertTrue(c1 >= 0);
+        assertTrue(c2 >= 0);        
+        
+        assertTrue(i1 > c1);
+        assertTrue(s1 > c2);
+        
+        for (Operation o : operations){
+        	System.out.println(o);
+        }
     }
    
 }

@@ -11,26 +11,29 @@
 3. integration of object model with com 
 3.1 mutual update tests
 
-<--- here we are now
 4. tcp/ip socket implementation
 -- presentation
 
-5 com setup / proper state initialization
-5.1 test for state initialization
+5. js object model implementation
+5.1 test for js object model
+6. js com implementation (member only)
+6.1 tests for js com implementation
 
-6. com shutdown / client removal
-6.1 test for shutdown
-7 error handling (client disappearance)
-7.1 test error handling    
+<--- here we are now
 
-8. js object model implementation
-8.1 test for js object model
-9. js com implementation (member only)
-9.1 tests for js com implementation
-10. js network communication
+7. js network communication
 
-9 web compliant java-js channel binding (socket.io?)
-9.1 overall tests with embedded server
+8 com setup / proper state initialization
+8.1 test for state initialization
+
+9. com shutdown / client removal
+9.1 test for shutdown
+10 error handling (client disappearance)
+10.1 test error handling    
+
+11 web compliant java-js channel binding (socket.io?)
+11.1 overall tests with embedded server (heroku)
 
 tbd.
-plugin for common java and js frameworks (spring, backbone, angular, ember)?
+plugin for common java and js mvc frameworks (spring, backbone, angular, ember)?
+think of persistence in key-value store (cassandra, redis)

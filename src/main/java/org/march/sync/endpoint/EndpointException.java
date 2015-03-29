@@ -1,28 +1,28 @@
-package org.march.sync.channel;
+package org.march.sync.endpoint;
 
-public class ChannelException extends Exception {
+public class EndpointException extends Exception {
 
     /**
      * 
      */
     private static final long serialVersionUID = -6284587797883152069L;
 
-    public ChannelException() {
+    public EndpointException() {
     }
 
-    public ChannelException(String message) {
+    public EndpointException(String message) {
         super(message);
     }
 
-    public ChannelException(Throwable cause) {
+    public EndpointException(Throwable cause) {
         super(cause);
     }
 
-    public ChannelException(String message, Throwable cause) {
+    public EndpointException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public ChannelException(String message, Throwable cause,
+    public EndpointException(String message, Throwable cause,
             boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }

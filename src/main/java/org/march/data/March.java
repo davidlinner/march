@@ -16,14 +16,14 @@ public class March {
         SimpleModel ctx = new SimpleModel();
         
         try {
-            ctx.apply(root().resolveAsPointer(ctx), new Set("a", new Constant("hello world!")));
+            ctx.apply(root().resolveAsPointer(ctx), new Set("a", new Constant("hello world!", Primitive.STRING)));
             
             Pointer p = Pointer.uniquePointer();
             ctx.apply(p, new Construct(Type.SEQUENCE));
             
             ctx.apply(root().resolveAsPointer(ctx), new Set("b", p));
             
-            ctx.apply(root().append("b").resolveAsPointer(ctx), new Insert(0, new Constant("nice!")), new Insert(0, new Constant("very")));
+            ctx.apply(root().append("b").resolveAsPointer(ctx), new Insert(0, new Constant("nice!", Primitive.STRING)), new Insert(0, new Constant("very", Primitive.STRING)));
             
             
             System.out.println(root().append("a").resolveAsConstant(ctx));
