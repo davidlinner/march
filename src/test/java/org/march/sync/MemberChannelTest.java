@@ -16,6 +16,7 @@ import org.march.sync.Clock;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.MemberEndpoint;
 import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.UpdateMessage;
 import org.march.sync.endpoint.MessageHandler;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
@@ -86,8 +87,8 @@ public class MemberChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        Message m0 = new Message(member0, clk.tick(), 0, ol0);
-        Message m1 = new Message(member0, clk.tick(), 0, ol1);
+        UpdateMessage m0 = new UpdateMessage(member0, clk.tick(), 0, ol0);
+        UpdateMessage m1 = new UpdateMessage(member0, clk.tick(), 0, ol1);
         
         channel.send(m0);
         channel.send(m1);
@@ -104,8 +105,8 @@ public class MemberChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        Message m0 = new Message(member0, 0, clk.tick(), ol0);
-        Message m1 = new Message(member0, 0, clk.tick(), ol1);
+        UpdateMessage m0 = new UpdateMessage(member0, 0, clk.tick(), ol0);
+        UpdateMessage m1 = new UpdateMessage(member0, 0, clk.tick(), ol1);
         
         channel.receive(m0);
         channel.receive(m1);
@@ -124,8 +125,8 @@ public class MemberChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        Message mm = new Message(member0, cm.tick(), 0, ol0);
-        Message ml = new Message(member1, 0, cl.tick(), ol1);
+        UpdateMessage mm = new UpdateMessage(member0, cm.tick(), 0, ol0);
+        UpdateMessage ml = new UpdateMessage(member1, 0, cl.tick(), ol1);
         
         channel.send(mm);
         channel.receive(ml);
@@ -143,8 +144,8 @@ public class MemberChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
                       
-        Message ml = new Message(member0, cm.tick(), 0, ol0);
-        Message mm = new Message(member1, cm.getTime(), cl.tick(), ol1);              
+        UpdateMessage ml = new UpdateMessage(member0, cm.tick(), 0, ol0);
+        UpdateMessage mm = new UpdateMessage(member1, cm.getTime(), cl.tick(), ol1);              
         
         channel.send(ml);
         channel.receive(mm);

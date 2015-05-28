@@ -12,13 +12,15 @@ import org.march.data.simple.SimpleModel;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.LeaderEndpoint;
 import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.SynchronizationMessage;
+import org.march.sync.endpoint.UpdateMessage;
 import org.march.sync.endpoint.MessageHandler;
 import org.march.sync.endpoint.OutboundEndpoint;
 import org.march.sync.transform.Transformer;
 
 public class Leader {
     
-    private HashMap<UUID, LeaderEndpoint> channels;    
+    private HashMap<UUID, LeaderEndpoint> endpoints;    
    
     private Transformer transformer;
     
@@ -29,7 +31,7 @@ public class Leader {
     private ReentrantLock lock;
     
     public Leader(Transformer transformer){
-        this.channels    = new HashMap<UUID, LeaderEndpoint>();               
+        this.endpoints    = new HashMap<UUID, LeaderEndpoint>();               
         this.clock       = new Clock();
         
         this.transformer    = transformer;
@@ -38,32 +40,51 @@ public class Leader {
         this.lock   = new ReentrantLock();
     }
     
-    public void subscribe(UUID member){
-        if(!this.channels.containsKey(member)){
-            final LeaderEndpoint channel = new LeaderEndpoint(this.transformer, this.lock);
+    public void subscribe(UUID member) throws LeaderException{
+        if(!this.endpoints.containsKey(member)){
+            final LeaderEndpoint endpoint = new LeaderEndpoint(this.transformer, this.lock);
             
-            this.channels.put(member, channel);        
+            this.endpoints.put(member, endpoint);        
             
-            channel.onInbound(new MessageHandler() {                
+            endpoint.onInbound(new MessageHandler() {                
                 public void handle(Message message) {
-                    Leader.this.inbound(channel, message);
+                    Leader.this.inbound(endpoint, message);
                 }
             }); 
+            
+            boolean isExclusive = lock.isHeldByCurrentThread();
+			if (!isExclusive) {
+				lock.lock();
+			}
+
+			try {
+				// send synchronization message to new member
+				Operation [] operations = this.model.serialize();
+				
+				endpoint.send(new SynchronizationMessage(member,endpoint.getRemoteTime(), this.clock.getTime(), operations));
+				
+			} catch (ObjectException | EndpointException e) {
+				throw new LeaderException("Subscription failed. Inconsistent leader state.", e);
+			} finally {
+				if (!isExclusive) {
+					lock.unlock();
+				}
+			}
         }        
     }
     
     public void unsubscribe(UUID member){        
-        LeaderEndpoint channel = this.channels.remove(member);
-        if(channel != null){
-            channel.offInbound();
+        LeaderEndpoint endpoint = this.endpoints.remove(member);
+        if(endpoint != null){
+            endpoint.offInbound();
         }        
     }
     
     public OutboundEndpoint getOutbound(UUID member){
-        return this.channels.get(member);     
+        return this.endpoints.get(member);     
     }
     
-    private void inbound(LeaderEndpoint originChannel, Message message){        
+    private void inbound(LeaderEndpoint originEndpoint, Message message){        
         this.clock.tick();
         
         try {
@@ -73,15 +94,15 @@ public class Leader {
             }
         } catch (ObjectException|CommandException  e) {
             // TODO: roll already performed changes back to recovery point
-            // TODO: send error to memnber
+            // TODO: send error to member
             
             unsubscribe(message.getMember());   
             
             return;
         } 
         
-        for(LeaderEndpoint channel: this.channels.values()){
-            if(channel != originChannel){
+        for(LeaderEndpoint endpoint: this.endpoints.values()){
+            if(endpoint != originEndpoint){
                 
                 //TODO: filter Nil type commands - no need to forward
                 // need a deep copy of operations since operations are mutable
@@ -91,7 +112,7 @@ public class Leader {
                 }
                               
                 try {
-                    channel.send(new Message(message.getMember(), channel.getRemoteTime(), this.clock.getTime(), operations));
+                    endpoint.send(new UpdateMessage(message.getMember(), endpoint.getRemoteTime(), this.clock.getTime(), operations));
                 } catch (EndpointException e) {
                     // kill channel
                 }

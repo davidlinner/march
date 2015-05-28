@@ -31,7 +31,7 @@ public class SynchronizationTest {
     Pipe up1, down1, up2, down2;
         
     @Before
-    public void setup(){               
+    public void setup() throws LeaderException{               
         leader = new Leader(TRANSFORMER);
         member1 = new Member(name1, TRANSFORMER);
         member2 = new Member(name2, TRANSFORMER);

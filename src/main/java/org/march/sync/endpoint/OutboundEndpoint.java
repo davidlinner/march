@@ -5,4 +5,6 @@ public interface OutboundEndpoint {
     OutboundEndpoint onOutbound(MessageHandler handler);
     OutboundEndpoint offOutbound(MessageHandler handler);
     OutboundEndpoint offOutbound();
+    void connect() throws EndpointException;
+    boolean isConnected();
 }  

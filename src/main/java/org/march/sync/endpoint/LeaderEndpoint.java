@@ -34,5 +34,4 @@ public class LeaderEndpoint extends Endpoint {
     protected void setRemoteTime(Message message, int time) {
         message.setMemberTime(time);        
     }
-
 }

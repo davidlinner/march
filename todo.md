@@ -19,15 +19,16 @@
 6. js com implementation (member only)
 6.1 tests for js com implementation
 
+7 com setup / proper state initialization
+7.1 test for state initialization
+
 <--- here we are now
 
-7. js network communication
-
-8 com setup / proper state initialization
-8.1 test for state initialization
+8. obsolete
 
 9. com shutdown / client removal
 9.1 test for shutdown
+9.2 add life-cycle methods to endpoints
 10 error handling (client disappearance)
 10.1 test error handling    
 

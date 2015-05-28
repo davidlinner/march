@@ -1,7 +1,5 @@
 package org.march.sync.transform;
 
-import static org.junit.Assert.assertEquals;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.UUID;

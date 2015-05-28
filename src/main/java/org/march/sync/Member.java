@@ -15,6 +15,7 @@ import org.march.data.simple.SimpleModel;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.MemberEndpoint;
 import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.UpdateMessage;
 import org.march.sync.endpoint.MessageHandler;
 import org.march.sync.endpoint.OutboundEndpoint;
 import org.march.sync.transform.Transformer;
@@ -65,7 +66,7 @@ public class Member {
         try {
             model.apply(pointer, command);
             
-            Message message = new Message(this.name, clock.tick(), channel.getRemoteTime(), 
+            UpdateMessage message = new UpdateMessage(this.name, clock.tick(), channel.getRemoteTime(), 
                     new Operation[]{new Operation(pointer, command)});
             
             channel.send(message);

@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.Message;
+import org.march.sync.endpoint.UpdateMessage;
 import org.march.sync.endpoint.MessageHandler;
 import org.march.sync.endpoint.OutboundEndpoint;
 
@@ -38,7 +39,7 @@ public class ChannelConnector implements Runnable{
         
         while(true){
             try {
-                Message message = (Message)in.readObject();
+                UpdateMessage message = (UpdateMessage)in.readObject();
                 if(message != null){                    
                     channel.receive(message);
                 }

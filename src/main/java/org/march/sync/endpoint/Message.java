@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.march.data.Operation;
 
 
-public class Message implements Cloneable, Serializable{
+public abstract class Message implements Cloneable, Serializable{
         
     private static final long serialVersionUID = 9031957263780176801L;
 
@@ -62,7 +62,7 @@ public class Message implements Cloneable, Serializable{
     }        
     
     public Message clone(){
-        return new Message(member, memberTime, leaderTime, operations);
+        return new UpdateMessage(member, memberTime, leaderTime, operations);
     }
     
     public Message memberTime(int memberTime){
