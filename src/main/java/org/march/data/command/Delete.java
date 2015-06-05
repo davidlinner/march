@@ -7,9 +7,13 @@ public class Delete implements Modification{
    
     private static final long serialVersionUID = -6816099990978169646L;
    
-    private int offset;
+    private int offset;        
     
-    public Delete(int offset) {
+    public Delete() {
+		super();
+	}
+
+	public Delete(int offset) {
         super();
         this.offset = offset;
     }

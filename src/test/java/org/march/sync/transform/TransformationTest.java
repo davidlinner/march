@@ -8,18 +8,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.march.data.Constant;
 import org.march.data.Operation;
 import org.march.data.Pointer;
+import org.march.data.StringConstant;
 import org.march.data.command.Insert;
 
 @RunWith(Parameterized.class)
 public class TransformationTest {
     
-    final Constant  a = new Constant("a"),
-                    b = new Constant("b"),
-                    c = new Constant("c"),
-                    d = new Constant("d");
+    final StringConstant  a = new StringConstant("a"),
+                    b = new StringConstant("b"),
+                    c = new StringConstant("c"),
+                    d = new StringConstant("d");
     
     Operation a0, b0, c0, c2, d0, d2;
     

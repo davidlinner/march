@@ -1,6 +1,6 @@
 package org.march.sync;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.util.LinkedList;
 import java.util.UUID;
@@ -8,16 +8,15 @@ import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.march.data.Constant;
 import org.march.data.Operation;
 import org.march.data.Pointer;
+import org.march.data.StringConstant;
 import org.march.data.command.Insert;
-import org.march.sync.Clock;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.MemberEndpoint;
 import org.march.sync.endpoint.Message;
-import org.march.sync.endpoint.UpdateMessage;
 import org.march.sync.endpoint.MessageHandler;
+import org.march.sync.endpoint.UpdateMessage;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
 
@@ -28,10 +27,10 @@ public class MemberChannelTest {
     
     private Pointer p = new Pointer(UUID.randomUUID());
     
-    private Constant a = new Constant("a");
-    private Constant b = new Constant("b");
-    private Constant c = new Constant("c");
-    private Constant d = new Constant("d");
+    private StringConstant a = new StringConstant("a");
+    private StringConstant b = new StringConstant("b");
+    private StringConstant c = new StringConstant("c");
+    private StringConstant d = new StringConstant("d");
     
     Operation a0 = new Operation(p, new Insert(0, a));    
     
@@ -55,7 +54,7 @@ public class MemberChannelTest {
     
     
     @Before
-    public void setupChannel(){
+    public void setupChannel() throws EndpointException{
         inboundBuffer.clear();
         outboundBuffer.clear();
 
@@ -70,7 +69,9 @@ public class MemberChannelTest {
             public void handle(Message message) {
                 inboundBuffer.add(message);
             }
-        });     
+        });
+        
+        channel.connect();
     }
     
     @After

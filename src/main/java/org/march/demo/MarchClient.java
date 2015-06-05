@@ -14,10 +14,11 @@ import java.util.UUID;
 
 import org.march.data.Command;
 import org.march.data.CommandException;
-import org.march.data.Constant;
 import org.march.data.Data;
+import org.march.data.NumberConstant;
 import org.march.data.ObjectException;
 import org.march.data.Pointer;
+import org.march.data.StringConstant;
 import org.march.data.command.Construct;
 import org.march.data.command.Insert;
 import org.march.data.command.Set;
@@ -112,9 +113,9 @@ public class MarchClient {
                     if(raw.startsWith("*")){
                         data = addresses.get(Integer.parseInt(raw.substring(1)));
                     } else if(isNumeric(raw)){
-                        data = new Constant(new Double(Double.parseDouble(raw)));
+                        data = new NumberConstant(new Double(Double.parseDouble(raw)));
                     } else {
-                        data = new Constant(raw);
+                        data = new StringConstant(raw);
                     }
                     
                     try {

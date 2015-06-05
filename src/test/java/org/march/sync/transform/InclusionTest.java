@@ -10,7 +10,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.march.data.Command;
-import org.march.data.Constant;
+import org.march.data.StringConstant;
 import org.march.data.command.Delete;
 import org.march.data.command.Insert;
 import org.march.data.command.Nil;
@@ -36,11 +36,11 @@ public class InclusionTest {
         TRANSFORMER.addInclusion(new NilCommandInclusion());
     }
     
-    final static Constant  
-        A = new Constant("a"),
-        B = new Constant("b"),
-        C = new Constant("c"),
-        D = new Constant("d");
+    final static StringConstant  
+        A = new StringConstant("a"),
+        B = new StringConstant("b"),
+        C = new StringConstant("c"),
+        D = new StringConstant("d");
     
     @Parameters
     public static Collection<Object[]> data() {

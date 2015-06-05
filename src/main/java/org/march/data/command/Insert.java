@@ -9,9 +9,13 @@ public class Insert implements Modification{
     private static final long serialVersionUID = -801997573780532462L;
    
     private int offset;
-    private Data data;
+    private Data data;        
     
-    public Insert(int offset, Data data) {
+    public Insert() {
+		super();
+	}
+
+	public Insert(int offset, Data data) {
         super();
         this.offset = offset;
         this.data  = data;

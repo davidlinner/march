@@ -20,7 +20,7 @@ public class Pipe {
         this.destination    = destination;
     }
     
-    public void open(){
+    public void open() throws EndpointException{
         buffer.clear();
         
         this.handler = new MessageHandler() {            
@@ -31,6 +31,8 @@ public class Pipe {
         };
         
         source.onOutbound(this.handler);
+        
+        source.connect();
     }
     
     public void close() throws EndpointException{

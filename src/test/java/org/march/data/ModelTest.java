@@ -73,7 +73,7 @@ public class ModelTest {
         
         model.apply(p, new Construct(Type.HASH));
         
-        Constant one = new Constant(1);
+        NumberConstant one = new NumberConstant(1);
 
         model.apply(p, new Set("test", one));        
         assertEquals(model.find(p, "test"), one);
@@ -89,7 +89,7 @@ public class ModelTest {
         
         model.apply(p, new Construct(Type.SEQUENCE));
         
-        Constant one = new Constant(1);
+        NumberConstant one = new NumberConstant(1);
 
         model.apply(p, new Insert(0, one));        
         assertEquals(model.find(p, 0), one);
@@ -106,8 +106,8 @@ public class ModelTest {
         model.apply(p1, new Construct(Type.SEQUENCE));
         model.apply(p2, new Construct(Type.HASH));
         
-        Constant one = new Constant(1);
-        Constant two = new Constant(2);
+        NumberConstant one = new NumberConstant(1);
+        NumberConstant two = new NumberConstant(2);
 
         model.apply(p1, new Insert(0, one));        
         model.apply(p1, new Insert(0, two));
