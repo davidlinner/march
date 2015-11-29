@@ -8,14 +8,13 @@ import org.march.data.CommandException;
 import org.march.data.Model;
 import org.march.data.ObjectException;
 import org.march.data.Operation;
-import org.march.data.simple.SimpleModel;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.LeaderEndpoint;
 import org.march.sync.endpoint.Message;
-import org.march.sync.endpoint.SynchronizationMessage;
-import org.march.sync.endpoint.UpdateMessage;
 import org.march.sync.endpoint.MessageHandler;
 import org.march.sync.endpoint.OutboundEndpoint;
+import org.march.sync.endpoint.SynchronizationMessage;
+import org.march.sync.endpoint.UpdateMessage;
 import org.march.sync.transform.Transformer;
 
 public class Leader {
@@ -30,23 +29,25 @@ public class Leader {
     
     private ReentrantLock lock;
     
-    public Leader(Transformer transformer){
+    //TODO: clone model here on construction as it is mutable
+    public Leader(Model model, Transformer transformer){
         this.endpoints    = new HashMap<UUID, LeaderEndpoint>();               
         this.clock       = new Clock();
         
         this.transformer    = transformer;
-        this.model          = new SimpleModel();
+        this.model          = model;
         
         this.lock   = new ReentrantLock();
     }
     
     public void subscribe(UUID member) throws LeaderException{
+    	//FIXME: shouldn't the list of endpoints be synchronized
         if(!this.endpoints.containsKey(member)){
             final LeaderEndpoint endpoint = new LeaderEndpoint(this.transformer, this.lock);
             
             this.endpoints.put(member, endpoint);        
             
-            endpoint.onInbound(new MessageHandler() {                
+            endpoint.connectInbound(new MessageHandler() {                
                 public void handle(Message message) {
                     Leader.this.inbound(endpoint, message);
                 }
@@ -76,7 +77,7 @@ public class Leader {
     public void unsubscribe(UUID member){        
         LeaderEndpoint endpoint = this.endpoints.remove(member);
         if(endpoint != null){
-            endpoint.offInbound();
+            endpoint.disconnectInbound();
         }        
     }
     
@@ -114,7 +115,7 @@ public class Leader {
                 try {
                     endpoint.send(new UpdateMessage(message.getMember(), endpoint.getRemoteTime(), this.clock.getTime(), operations));
                 } catch (EndpointException e) {
-                    // kill channel
+                    // TODO: unsubscribe - client uuid of endpoint should be obtainable from endpoint itself
                 }
             }
         }

@@ -26,13 +26,13 @@ public class ChannelConnector implements Runnable{
 
     @Override
     public void run() {
-        channel.onOutbound(new MessageHandler() {            
+        channel.connectOutbound(new MessageHandler() {            
             @Override
             public void handle(Message message) {
                 try {
                     out.writeObject(message);
                 } catch (IOException e) {
-                   channel.offOutbound();                   
+                   channel.disconnectOutbound();                   
                 }
             }
         });

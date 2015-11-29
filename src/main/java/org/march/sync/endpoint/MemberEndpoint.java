@@ -5,10 +5,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.march.sync.transform.Transformer;
 
 public class MemberEndpoint extends Endpoint {
-
-    public MemberEndpoint(Transformer transformer) {
-        super(transformer);
-    }
     
     public MemberEndpoint(Transformer transformer, ReentrantLock lock) {
         super(transformer, lock);
@@ -32,5 +28,5 @@ public class MemberEndpoint extends Endpoint {
     @Override
     protected void setRemoteTime(Message message, int time) {
         message.setLeaderTime(time);        
-    }    
+    }
 }

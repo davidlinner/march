@@ -9,10 +9,6 @@ public class LeaderEndpoint extends Endpoint {
     public LeaderEndpoint(Transformer transformer, ReentrantLock lock) {
         super(transformer, lock);
     }
-    
-    public LeaderEndpoint(Transformer transformer) {
-        super(transformer);
-    }
 
     @Override
     protected int getLocalTime(Message message) {

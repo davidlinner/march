@@ -7,7 +7,6 @@ import org.march.sync.Clock;
 import org.march.sync.transform.Transformer;
 
 
-// TODO: kick principle of multiple listeners and merge "connect" with "onOutbound" 
 // TODO: add member uuid as field and check member of message against this field on reception 
 public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 
@@ -16,12 +15,12 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 
 	private LinkedList<Message> queue;
 
-	private LinkedList<MessageHandler> inboundHandlers;
-	private LinkedList<MessageHandler> outboundHandlers;
+	private MessageHandler inboundHandler = null;
+	private MessageHandler outboundHandler = null;
 
 	private ReentrantLock lock;
-
-	private boolean isConnected = false;
+		
+	private EndpointState state = EndpointState.INITIALIZED;
 
 	public Endpoint(Transformer transformer, ReentrantLock lock) {
 		this.transformer = transformer;
@@ -30,18 +29,12 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		this.remoteTime = 0;
 
 		this.queue = new LinkedList<Message>();
-
-		this.inboundHandlers = new LinkedList<MessageHandler>();
-		this.outboundHandlers = new LinkedList<MessageHandler>();
-	}
-
-	public Endpoint(Transformer transformer) {
-		this(transformer, new ReentrantLock());
 	}
 
 	public void receive(Message message) throws EndpointException {
-		if (!isConnected){
-			throw new EndpointException("Endpoint is not connected.");
+		if (state != EndpointState.OPEN){
+			throw new EndpointException(
+					String.format("Endpoint has to be open to receive messages. Current state is %s.", state));
 		}
 		
 		lock.lock();
@@ -70,9 +63,7 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 														// preserved on empty
 														// queue
 
-			for (MessageHandler handler : inboundHandlers) {
-				handler.handle(message);
-			}
+			inboundHandler.handle(message);
 
 		} catch (Exception e) {
 			throw new EndpointException(e);
@@ -81,25 +72,28 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		}
 	}
 
-	public OutboundEndpoint onOutbound(MessageHandler handler) {
-		if (handler != null && !outboundHandlers.contains(handler)) {
-			outboundHandlers.add(handler);
+	public OutboundEndpoint connectOutbound(MessageHandler handler) {
+
+		if (outboundHandler == null){
+			this.outboundHandler = handler;						
 		}
 
 		return this;
 	}
 
-	public OutboundEndpoint offOutbound(MessageHandler handler) {
-		outboundHandlers.remove(handler);
-		return this;
-	}
-
-	public OutboundEndpoint offOutbound() {
-		outboundHandlers.clear();
+	public OutboundEndpoint disconnectOutbound() {
+		this.outboundHandler = null;
+		this.state = EndpointState.CLOSED;
+		
 		return this;
 	}
 
 	public void send(Message message) throws EndpointException {
+		
+		if(state == EndpointState.CLOSED){
+			throw new EndpointException("Endpoint was closed.");
+		}
+		
 		if (getRemoteTime(message) != this.remoteTime) {
 			throw new EndpointException("Message is out of synchronization.");
 		}
@@ -111,10 +105,8 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 
 		try {
 			queue.offer(message);
-			if (isConnected) {
-				for (MessageHandler handler : outboundHandlers) {
-					handler.handle(message);
-				}
+			if (state == EndpointState.OPEN) {
+				outboundHandler.handle(message);
 			}
 		} finally {
 			if (!isExclsuive) {
@@ -123,21 +115,17 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		}
 	}
 
-	public InboundEndpoint onInbound(MessageHandler handler) {
-		if (handler != null && !inboundHandlers.contains(handler)) {
-			inboundHandlers.add(handler);
+	public InboundEndpoint connectInbound(MessageHandler handler) {
+		if (handler != null && inboundHandler == null) {
+			inboundHandler = handler;
 		}
 
 		return this;
 	}
 
-	public InboundEndpoint offInbound(MessageHandler handler) {
-		inboundHandlers.remove(handler);
-		return this;
-	}
-
-	public InboundEndpoint offInbound() {
-		inboundHandlers.clear();
+	public InboundEndpoint disconnectInbound() {
+		this.inboundHandler = null;
+		this.state = EndpointState.CLOSED;
 		return this;
 	}
 
@@ -145,34 +133,37 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		return this.remoteTime;
 	}
 
-	@Override
-	public void connect() throws EndpointException {
-		if (!isConnected) {
-			isConnected = true;
-
-			boolean isExclusive = lock.isHeldByCurrentThread();
-			if (!isExclusive) {
-				lock.lock();
-			}
-
-			try {
-				for (Message message : queue) {
-					for (MessageHandler handler : outboundHandlers) {
-						handler.handle(message);
-					}
-				}
-			} finally {
-				if (!isExclusive) {
-					lock.unlock();
-				}
-			}
+	public void open() throws EndpointException {
+		
+		if(state == EndpointState.OPEN) {
+			throw new EndpointException("Endpoint already opened.");
+		};
+		
+		if(!isConnected()){
+			throw new EndpointException("Cannot open endpoint. Message handler missing on in- or outbound channel.");
 		}
-	}	
-	
+		
+		this.state = EndpointState.OPEN;
+		
+		boolean isExclusive = lock.isHeldByCurrentThread();
+		if (!isExclusive) {
+			lock.lock();
+		}
 
-	@Override
+		try {
+			for (Message message : queue) {
+				outboundHandler.handle(message);
+			}
+		} finally {
+			if (!isExclusive) {
+				lock.unlock();
+			}
+		}		
+	}	
+		
 	public boolean isConnected() {
-		return isConnected;
+		return this.outboundHandler != null &&
+				this.inboundHandler != null;
 	}
 
 	protected abstract int getLocalTime(Message message);

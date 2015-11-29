@@ -30,15 +30,15 @@ public class Pipe {
             }
         };
         
-        source.onOutbound(this.handler);
+        source.connectOutbound(this.handler);
         
-        source.connect();
+        source.open();
     }
     
     public void close() throws EndpointException{
         this.flush();
         
-        source.offOutbound(this.handler);        
+        source.disconnectOutbound();        
         
         this.handler = null;
     }
@@ -47,5 +47,6 @@ public class Pipe {
         for(Message message: buffer){
             destination.receive(message);
         }
+       buffer.clear();
     }
 }

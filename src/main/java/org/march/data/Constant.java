@@ -5,10 +5,10 @@ public abstract class Constant<T> implements Data {
     private static final long serialVersionUID = -1767761499801107158L;
     
     private T value;
-    
+        
     public Constant(T value /*, Primitive type*/) {
         super();
-        this.value = value;
+        this.value 	= value;
     }
    
 

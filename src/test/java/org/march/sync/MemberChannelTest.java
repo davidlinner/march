@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.LinkedList;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.junit.After;
 import org.junit.Before;
@@ -58,20 +59,20 @@ public class MemberChannelTest {
         inboundBuffer.clear();
         outboundBuffer.clear();
 
-        channel = new MemberEndpoint(TRANSFORMER);
-        channel.onOutbound(new MessageHandler() {            
+        channel = new MemberEndpoint(TRANSFORMER, new ReentrantLock());
+        channel.connectOutbound(new MessageHandler() {            
             public void handle(Message message) {
                 outboundBuffer.add(message);
             }
         });          
         
-        channel.onInbound(new MessageHandler() {            
+        channel.connectInbound(new MessageHandler() {            
             public void handle(Message message) {
                 inboundBuffer.add(message);
             }
         });
         
-        channel.connect();
+        channel.open();
     }
     
     @After

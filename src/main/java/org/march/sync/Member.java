@@ -3,6 +3,7 @@ package org.march.sync;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.march.data.Command;
 import org.march.data.CommandException;
@@ -37,11 +38,11 @@ public class Member {
         this.name = name; 
         
         clock   = new Clock();
-        channel = new MemberEndpoint(transformer);
+        channel = new MemberEndpoint(transformer, new ReentrantLock());
         
         model   = new SimpleModel();
                 
-        channel.onInbound(new MessageHandler() {            
+        channel.connectInbound(new MessageHandler() {            
             public void handle(Message message) {
                 try {
                     for(Operation operation: message.getOperations()){
@@ -52,7 +53,7 @@ public class Member {
                         }
                     }
                 } catch (ObjectException|CommandException  e) {
-                   channel.offInbound();
+                   channel.disconnectInbound();
                 } 
             }
         });

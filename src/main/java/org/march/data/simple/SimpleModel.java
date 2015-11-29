@@ -42,7 +42,7 @@ public class SimpleModel implements Model{
     private Pointer hash(){
         Pointer pointer = new Pointer(UUID.randomUUID());
         this.memory.put(pointer, new Hash());
-        
+
         return pointer;
     }     
     
