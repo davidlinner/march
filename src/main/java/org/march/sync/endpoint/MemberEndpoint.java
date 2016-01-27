@@ -11,22 +11,22 @@ public class MemberEndpoint extends Endpoint {
     }
 
     @Override
-    protected int getLocalTime(Message message) {
+    protected int getLocalTime(Bucket message) {
         return message.getMemberTime();
     }
 
     @Override
-    protected void setLocalTime(Message message, int time) {        
+    protected void setLocalTime(Bucket message, int time) {        
         message.setMemberTime(time);
     }
 
     @Override
-    protected int getRemoteTime(Message message) {
+    protected int getRemoteTime(Bucket message) {
         return message.getLeaderTime();
     }
 
     @Override
-    protected void setRemoteTime(Message message, int time) {
+    protected void setRemoteTime(Bucket message, int time) {
         message.setLeaderTime(time);        
     }
 }

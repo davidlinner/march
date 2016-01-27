@@ -11,7 +11,6 @@ import org.march.data.CommandException;
 import org.march.data.ObjectException;
 import org.march.data.StringConstant;
 import org.march.data.command.Set;
-import org.march.data.simple.SimpleModel;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.transform.Transformer;
 
@@ -33,7 +32,7 @@ public class SynchronizationTest {
         
     @Before
     public void setup() throws LeaderException, EndpointException{               
-        leader = new Leader(new SimpleModel(), TRANSFORMER);
+        leader = new Leader( TRANSFORMER);
         member1 = new Member(name1, TRANSFORMER);
         member2 = new Member(name2, TRANSFORMER);
         

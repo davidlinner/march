@@ -13,10 +13,10 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 	private Transformer transformer;
 	private int remoteTime;
 
-	private LinkedList<Message> queue;
+	private LinkedList<Bucket> queue;
 
-	private MessageHandler inboundHandler = null;
-	private MessageHandler outboundHandler = null;
+	private BucketHandler inboundHandler = null;
+	private BucketHandler outboundHandler = null;
 
 	private ReentrantLock lock;
 		
@@ -28,10 +28,10 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 
 		this.remoteTime = 0;
 
-		this.queue = new LinkedList<Message>();
+		this.queue = new LinkedList<Bucket>();
 	}
 
-	public void receive(Message message) throws EndpointException {
+	public void receive(Bucket bucket) throws EndpointException {
 		if (state != EndpointState.OPEN){
 			throw new EndpointException(
 					String.format("Endpoint has to be open to receive messages. Current state is %s.", state));
@@ -43,27 +43,27 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		try {
 			while (!queue.isEmpty()
 					&& !Clock.after(getLocalTime(queue.peek()),
-							getLocalTime(message))) {
+							getLocalTime(bucket))) {
 				queue.poll();
 			}
 
 			// harmonize remaining messages in buffer and new message at once
-			for (Message enqueued : queue) {
+			for (Bucket enqueued : queue) {
 				transformer
-						.transform(message.getOperations(), enqueued
-								.getOperations(), message.getMember()
+						.transform(bucket.getOperations(), enqueued
+								.getOperations(), bucket.getMember()
 								.compareTo(enqueued.getMember()) > 0);
 
 				// adjust times
-				setRemoteTime(enqueued, getRemoteTime(message));
-				setLocalTime(message, getLocalTime(enqueued));
+				setRemoteTime(enqueued, getRemoteTime(bucket));
+				setLocalTime(bucket, getLocalTime(enqueued));
 			}
 
-			this.remoteTime = getRemoteTime(message); // make sure time is
+			this.remoteTime = getRemoteTime(bucket); // make sure time is
 														// preserved on empty
 														// queue
 
-			inboundHandler.handle(message);
+			inboundHandler.handle(bucket);
 
 		} catch (Exception e) {
 			throw new EndpointException(e);
@@ -72,7 +72,7 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		}
 	}
 
-	public OutboundEndpoint connectOutbound(MessageHandler handler) {
+	public OutboundEndpoint connectOutbound(BucketHandler handler) {
 
 		if (outboundHandler == null){
 			this.outboundHandler = handler;						
@@ -88,13 +88,13 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		return this;
 	}
 
-	public void send(Message message) throws EndpointException {
+	public void send(Bucket bucket) throws EndpointException {
 		
 		if(state == EndpointState.CLOSED){
 			throw new EndpointException("Endpoint was closed.");
 		}
 		
-		if (getRemoteTime(message) != this.remoteTime) {
+		if (getRemoteTime(bucket) != this.remoteTime) {
 			throw new EndpointException("Message is out of synchronization.");
 		}
 
@@ -104,9 +104,9 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		}
 
 		try {
-			queue.offer(message);
+			queue.offer(bucket);
 			if (state == EndpointState.OPEN) {
-				outboundHandler.handle(message);
+				outboundHandler.handle(bucket);
 			}
 		} finally {
 			if (!isExclsuive) {
@@ -115,7 +115,7 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		}
 	}
 
-	public InboundEndpoint connectInbound(MessageHandler handler) {
+	public InboundEndpoint connectInbound(BucketHandler handler) {
 		if (handler != null && inboundHandler == null) {
 			inboundHandler = handler;
 		}
@@ -151,8 +151,8 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 		}
 
 		try {
-			for (Message message : queue) {
-				outboundHandler.handle(message);
+			for (Bucket bucket : queue) {
+				outboundHandler.handle(bucket);
 			}
 		} finally {
 			if (!isExclusive) {
@@ -166,12 +166,12 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 				this.inboundHandler != null;
 	}
 
-	protected abstract int getLocalTime(Message message);
+	protected abstract int getLocalTime(Bucket bucket);
 
-	protected abstract void setLocalTime(Message message, int time);
+	protected abstract void setLocalTime(Bucket bucket, int time);
 
-	protected abstract int getRemoteTime(Message message);
+	protected abstract int getRemoteTime(Bucket bucket);
 
-	protected abstract void setRemoteTime(Message message, int time);
+	protected abstract void setRemoteTime(Bucket bucket, int time);
 
 }

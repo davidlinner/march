@@ -15,9 +15,9 @@ import org.march.data.StringConstant;
 import org.march.data.command.Insert;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.MemberEndpoint;
-import org.march.sync.endpoint.Message;
-import org.march.sync.endpoint.MessageHandler;
-import org.march.sync.endpoint.UpdateMessage;
+import org.march.sync.endpoint.Bucket;
+import org.march.sync.endpoint.BucketHandler;
+import org.march.sync.endpoint.UpdateBucket;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
 
@@ -50,8 +50,8 @@ public class MemberChannelTest {
         
     private MemberEndpoint channel;
        
-    final LinkedList<Message> inboundBuffer = new LinkedList<Message>();
-    final LinkedList<Message> outboundBuffer = new LinkedList<Message>();
+    final LinkedList<Bucket> inboundBuffer = new LinkedList<Bucket>();
+    final LinkedList<Bucket> outboundBuffer = new LinkedList<Bucket>();
     
     
     @Before
@@ -60,14 +60,14 @@ public class MemberChannelTest {
         outboundBuffer.clear();
 
         channel = new MemberEndpoint(TRANSFORMER, new ReentrantLock());
-        channel.connectOutbound(new MessageHandler() {            
-            public void handle(Message message) {
+        channel.connectOutbound(new BucketHandler() {            
+            public void handle(Bucket message) {
                 outboundBuffer.add(message);
             }
         });          
         
-        channel.connectInbound(new MessageHandler() {            
-            public void handle(Message message) {
+        channel.connectInbound(new BucketHandler() {            
+            public void handle(Bucket message) {
                 inboundBuffer.add(message);
             }
         });
@@ -89,8 +89,8 @@ public class MemberChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        UpdateMessage m0 = new UpdateMessage(member0, clk.tick(), 0, ol0);
-        UpdateMessage m1 = new UpdateMessage(member0, clk.tick(), 0, ol1);
+        UpdateBucket m0 = new UpdateBucket(member0, clk.tick(), 0, ol0);
+        UpdateBucket m1 = new UpdateBucket(member0, clk.tick(), 0, ol1);
         
         channel.send(m0);
         channel.send(m1);
@@ -107,8 +107,8 @@ public class MemberChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        UpdateMessage m0 = new UpdateMessage(member0, 0, clk.tick(), ol0);
-        UpdateMessage m1 = new UpdateMessage(member0, 0, clk.tick(), ol1);
+        UpdateBucket m0 = new UpdateBucket(member0, 0, clk.tick(), ol0);
+        UpdateBucket m1 = new UpdateBucket(member0, 0, clk.tick(), ol1);
         
         channel.receive(m0);
         channel.receive(m1);
@@ -127,8 +127,8 @@ public class MemberChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        UpdateMessage mm = new UpdateMessage(member0, cm.tick(), 0, ol0);
-        UpdateMessage ml = new UpdateMessage(member1, 0, cl.tick(), ol1);
+        UpdateBucket mm = new UpdateBucket(member0, cm.tick(), 0, ol0);
+        UpdateBucket ml = new UpdateBucket(member1, 0, cl.tick(), ol1);
         
         channel.send(mm);
         channel.receive(ml);
@@ -146,8 +146,8 @@ public class MemberChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
                       
-        UpdateMessage ml = new UpdateMessage(member0, cm.tick(), 0, ol0);
-        UpdateMessage mm = new UpdateMessage(member1, cm.getTime(), cl.tick(), ol1);              
+        UpdateBucket ml = new UpdateBucket(member0, cm.tick(), 0, ol0);
+        UpdateBucket mm = new UpdateBucket(member1, cm.getTime(), cl.tick(), ol1);              
         
         channel.send(ml);
         channel.receive(mm);

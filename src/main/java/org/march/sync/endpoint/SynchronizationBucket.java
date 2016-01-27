@@ -4,17 +4,17 @@ import java.util.UUID;
 
 import org.march.data.Operation;
 
-public class SynchronizationMessage extends Message {
+public class SynchronizationBucket extends Bucket {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 8660716465237997248L;
-	public SynchronizationMessage() {
+	public SynchronizationBucket() {
 		super();
 	}
 
-	public SynchronizationMessage(UUID member, int memberTime, int leaderTime,
+	public SynchronizationBucket(UUID member, int memberTime, int leaderTime,
 			Operation[] operations) {
 		super(member, memberTime, leaderTime, operations);
 	}

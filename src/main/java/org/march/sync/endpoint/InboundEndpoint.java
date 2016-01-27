@@ -2,7 +2,7 @@ package org.march.sync.endpoint;
 
 
 public interface InboundEndpoint {
-    void send(Message message) throws EndpointException;
-    InboundEndpoint connectInbound(MessageHandler handler);
+    void send(Bucket message) throws EndpointException;
+    InboundEndpoint connectInbound(BucketHandler handler);
     InboundEndpoint disconnectInbound();
 }

@@ -46,8 +46,10 @@ public class SimpleModel implements Model{
         return pointer;
     }     
     
-    public void apply(Operation operation) throws ObjectException, CommandException{ 
-    	apply(operation.getPointer(), operation.getCommand());
+    public void apply(Operation... operations) throws ObjectException, CommandException{ 
+    	for (Operation operation: operations) {
+    		apply(operation.getPointer(), operation.getCommand());
+    	}
     }
 
     public void apply(Pointer pointer, Command... commands) throws ObjectException, CommandException{        

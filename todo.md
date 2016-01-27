@@ -24,16 +24,39 @@
 
 <--- here we are now
 
-8. obsolete
+8. server
+8.1 member lifecycle tests
+8.2 various error scenario tests
 
-9. com shutdown / client removal
-9.1 test for shutdown
-9.2 add life-cycle methods to endpoints
-10 error handling (client disappearance)
-10.1 test error handling    
+9. datastore connector for files
+9.1 tests for data store
 
-11 web compliant java-js channel binding (socket.io?)
-11.1 overall tests with embedded server (heroku)
+10. binding for popular java websocket framework (socket.io?)
+
+11. client binding to websockets
+
+12. client data model layer
+12.1 model layer tests
+
+13. examplary integration with (hype) javascript framework
+
+14. make builds available
+14.1 revise build systems and project modules
+
+15. make a simple demo application
+ 
+16. write articles
+16.1 short problem statement - relevance of fast, optimistic replication with eventual consistency - motivate with MVP/MMP buzz  
+16.2 demo application
+
+17. share with valued peers
+
+-- Milestone 2
+
+18. setup a project web space with getting started etc.
+
+19. integrate with more hype frameworks
+
 
 tbd.
 plugin for common java and js mvc frameworks (spring, backbone, angular, ember)?

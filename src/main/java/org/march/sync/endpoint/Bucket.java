@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.march.data.Operation;
 
 
-public abstract class Message implements Cloneable, Serializable{
+public abstract class Bucket implements Cloneable, Serializable{
         
     private static final long serialVersionUID = 9031957263780176801L;
 
@@ -17,10 +17,10 @@ public abstract class Message implements Cloneable, Serializable{
         
     private Operation[] operations;
     
-    public Message (){        
+    public Bucket (){        
     }    
     
-    public Message(UUID member, int memberTime, int leaderTime,
+    public Bucket(UUID member, int memberTime, int leaderTime,
             Operation[] operations) {
         super();
         this.member = member;
@@ -61,18 +61,18 @@ public abstract class Message implements Cloneable, Serializable{
         this.operations = operations;
     }        
     
-    public Message clone(){
-        return new UpdateMessage(member, memberTime, leaderTime, operations);
+    public Bucket clone(){
+        return new UpdateBucket(member, memberTime, leaderTime, operations);
     }
     
-    public Message memberTime(int memberTime){
+    public Bucket memberTime(int memberTime){
         this.memberTime = memberTime;
         return this;
     }
 
     @Override
     public String toString() {
-        return "Message [member=" + member + ", memberTime=" + memberTime
+        return "Bucket [member=" + member + ", memberTime=" + memberTime
                 + ", leaderTime=" + leaderTime + ", operations="
                 + Arrays.toString(operations) + "]";
     }

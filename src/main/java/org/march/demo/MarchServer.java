@@ -8,7 +8,6 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.UUID;
 
-import org.march.data.simple.SimpleModel;
 import org.march.sync.Leader;
 import org.march.sync.LeaderException;
 import org.march.sync.endpoint.OutboundEndpoint;
@@ -24,7 +23,7 @@ public class MarchServer implements Runnable {
         serverSocket = new ServerSocket(port);
         serverSocket.setSoTimeout(120000);
         
-        leader = new Leader(new SimpleModel(), new Transformer()); 
+        leader = new Leader(new Transformer()); 
     }
 
     public void run() {

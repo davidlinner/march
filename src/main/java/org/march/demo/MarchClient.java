@@ -17,13 +17,14 @@ import org.march.data.CommandException;
 import org.march.data.Data;
 import org.march.data.NumberConstant;
 import org.march.data.ObjectException;
+import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.StringConstant;
 import org.march.data.command.Construct;
 import org.march.data.command.Insert;
 import org.march.data.command.Set;
 import org.march.data.command.Type;
-import org.march.sync.CommandHandler;
+import org.march.sync.OperationHandler;
 import org.march.sync.Member;
 import org.march.sync.MemberException;
 import org.march.sync.endpoint.OutboundEndpoint;
@@ -70,11 +71,14 @@ public class MarchClient {
                         
             addresses.add(null);
             
-            member.onCommand(new CommandHandler() {                
+            member.onCommand(new OperationHandler() {                
                 @Override
-                public void handleCommand(Pointer pointer, Command command) {
+                public void handleOperation(Operation operation) {
                     //System.out.println(String.format("The command %s was applied to object %s.", command, pointer));
                     
+                	Command command = operation.getCommand(); 
+                	Pointer pointer = operation.getPointer();
+                	
                     if(command instanceof Construct){
                         addresses.add(pointer);
                         
