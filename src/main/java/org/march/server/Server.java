@@ -118,4 +118,14 @@ public class Server {
 	private void process(String scope, Bucket bucket){
 		
 	}
+	
+	/*
+	 * create(member, scope):session
+	 * session.open((bucket) -> {})
+	 * session.update(bucket)
+	 * session.close()
+	 *  
+	 * 
+	 * 
+	 * */
 }
