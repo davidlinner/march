@@ -3,6 +3,7 @@ package org.march.demo;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.UUID;
 
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.Bucket;
@@ -28,7 +29,7 @@ public class ChannelConnector implements Runnable{
     public void run() {
         channel.connectOutbound(new BucketHandler() {            
             @Override
-            public void handle(Bucket message) {
+            public void handle(UUID member, Bucket message) {
                 try {
                     out.writeObject(message);
                 } catch (IOException e) {

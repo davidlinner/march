@@ -41,13 +41,13 @@ public class MarchServer implements Runnable {
                 UUID id = (UUID)in.readObject();
                 System.out.println("I am " + id);
                 
-                leader.subscribe(id);
+                leader.register(id);
                 
-                OutboundEndpoint channel = leader.getOutbound(id);
-                
-                (new Thread(new ChannelConnector(channel, in, out))).start(); 
-                
-                System.out.println("Accepted connection for: " + id);
+//                OutboundEndpoint channel = leader.getOutbound(id);
+//
+//                (new Thread(new ChannelConnector(channel, in, out))).start();
+//
+//                System.out.println("Accepted connection for: " + id);
               
             } catch (SocketTimeoutException s) {
                 System.out.println("Socket timed out!");

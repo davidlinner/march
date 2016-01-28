@@ -6,8 +6,8 @@ import org.march.sync.transform.Transformer;
 
 public class MemberEndpoint extends Endpoint {
     
-    public MemberEndpoint(Transformer transformer, ReentrantLock lock) {
-        super(transformer, lock);
+    public MemberEndpoint(Transformer transformer) {
+        super(transformer);
     }
 
     @Override

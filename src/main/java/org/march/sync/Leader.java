@@ -1,19 +1,20 @@
 package org.march.sync;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.march.data.CommandException;
 import org.march.data.Model;
 import org.march.data.ObjectException;
 import org.march.data.Operation;
+import org.march.data.command.Nil;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.LeaderEndpoint;
 import org.march.sync.endpoint.Bucket;
 import org.march.sync.endpoint.BucketHandler;
-import org.march.sync.endpoint.OutboundEndpoint;
 import org.march.sync.endpoint.SynchronizationBucket;
 import org.march.sync.endpoint.UpdateBucket;
 import org.march.sync.transform.Transformer;
@@ -27,32 +28,51 @@ public class Leader {
     private Clock clock;
     
     private Model model;
-    
-    private ReentrantLock lock;
-    
-    private OperationHandler handler;
-    
-    //TODO: Model could be muted outside. how cope with this issue?
-    //TODO: access to endpoints has to be synchronized
+
+    private OperationHandler operationHandler;
+
+    private BucketHandler bucketHandler;
+
+    private LeaderState state = LeaderState.INITIALIZED;
+
     public Leader(Transformer transformer){
-        this.endpoints    = new HashMap<UUID, LeaderEndpoint>();               
-        this.clock       = new Clock();
+        this.endpoints      = new HashMap<UUID, LeaderEndpoint>();
+        this.clock          = new Clock();
         
         this.transformer    = transformer;
         this.model          = new SimpleModel();
-        
-        this.lock   = new ReentrantLock();
+
     }
     
-    public void setData(Operation [] operations) throws ObjectException, CommandException, LeaderException {
-    	if(!endpoints.isEmpty()){
-    		throw new LeaderException("State is immutable when endpoints are connected.");
-    	}
-    	
-    	this.model.apply(operations);
+    public synchronized void share(Operation [] operations, OperationHandler operationHandler) throws LeaderException {
+
+        if (state != LeaderState.INITIALIZED)
+            throw new LeaderException("Cannot reset data once sharing was started.");
+
+
+        this.operationHandler = operationHandler;
+
+        try {
+            this.model.apply(operations);
+        } catch (ObjectException | CommandException e) {
+            throw new LeaderException("Cannot load operations into a consistent state representation model.", e);
+        }
+
+        state = LeaderState.SHARING;
+
+    }
+
+    public synchronized void unshare(){
+        for(UUID member: endpoints.keySet()){
+            unregister(member);
+        }
+
+        state = LeaderState.READ_ONLY;
+
+        this.operationHandler = null;
     }
     
-    public Operation[] getData(){
+    public Operation[] read(){
     	try {
 			return this.model.serialize();
 		} catch (ObjectException e) {
@@ -61,103 +81,120 @@ public class Leader {
     	
     	return null;
     }
-    
-    // use command handle to keep original data source in sync
-    public void onCommand(OperationHandler handler){
-    	this.handler = handler;
-    }
-    
-    public void offCommand(){
-    	this.handler = null;
-    }
-    
-    public void subscribe(UUID member) throws LeaderException{
 
-    	//FIXME: shouldn't the list of endpoints be synchronized?
-        if(!this.endpoints.containsKey(member)){
-            final LeaderEndpoint endpoint = new LeaderEndpoint(this.transformer, this.lock);
-            
-            this.endpoints.put(member, endpoint);        
-            
-            endpoint.connectInbound(new BucketHandler() {                
-                public void handle(Bucket message) {
-                    Leader.this.deliver(endpoint, message);
-                }
-            }); 
-            
-            boolean isExclusive = lock.isHeldByCurrentThread();
-			if (!isExclusive) {
-				lock.lock();
-			}
+    public synchronized void onBucket(BucketHandler bucketHandler) throws LeaderException {
+        if(this.state != LeaderState.INITIALIZED) throw new LeaderException("Can only change bucket listener before start sharing.");
+        this.bucketHandler = bucketHandler;
+    }
 
-			try {
-				// send synchronization message to new member
-				Operation [] operations = this.model.serialize();
-				
-				endpoint.send(new SynchronizationBucket(member,endpoint.getRemoteTime(), this.clock.getTime(), operations));
-				
-			} catch (ObjectException | EndpointException e) {
-				throw new LeaderException("Subscription failed. Inconsistent leader state.", e);
-			} finally {
-				if (!isExclusive) {
-					lock.unlock();
-				}
-			}
+    public synchronized void register(UUID member) throws LeaderException{
+
+        if (state != LeaderState.SHARING) throw new LeaderException("Can only add members when actively sharing data.");
+
+        if (!endpoints.containsKey(member)) {
+            final LeaderEndpoint endpoint = new LeaderEndpoint(this.transformer);
+
+            this.endpoints.put(member, endpoint);
+
+//            try {
+//                // push synchronization message for new member into buffer
+//                Operation[] operations = this.model.serialize();
+//
+//                Bucket bucket = endpoint.send(new SynchronizationBucket(member, endpoint.getRemoteTime(), this.clock.getTime(), operations));
+//
+//                this.bucketHandler.handle(bucket);
+//            } catch (ObjectException | EndpointException e) {
+//                throw new LeaderException("Adding member failed. Inconsistent leader state.", e);
+//            }
         } else {
-        	throw new LeaderException("Member is already subscribed.");
-        }       
+            throw new LeaderException("Member is already subscribed.");
+        }
+
     }
     
-    public void unsubscribe(UUID member){        
-        LeaderEndpoint endpoint = this.endpoints.remove(member);
-        if(endpoint != null){
-            endpoint.disconnectInbound();
-        }        
+    public synchronized void unregister(UUID member){
+        LeaderEndpoint endpoint = endpoints.remove(member);
     }
-    
-    public OutboundEndpoint getOutbound(UUID member){
-        return this.endpoints.get(member);     
-    }
-    
-    private void deliver(LeaderEndpoint originEndpoint, Bucket bucket){        
-        this.clock.tick();
-        
+
+    public synchronized void update(Bucket bucket) throws LeaderException {
+
+        if (state != LeaderState.SHARING) throw new LeaderException("Can only add members when actively sharing data.");
+
+        LeaderEndpoint originEndpoint = endpoints.get(bucket.getMember());
+
+        if (originEndpoint == null) {
+            throw new LeaderException(String.format("Member '%s' is unknown.", bucket.getMember()));
+        }
+
         try {
-            // TODO: set recovery point on model            
-        	this.model.apply(bucket.getOperations());    
-        	
-        	if(this.handler != null){
-	        	for (Operation operation: bucket.getOperations()){
-	        		handler.handleOperation(operation);
-	        	}
-        	}
-            
-        } catch (ObjectException|CommandException  e) {
-            // TODO: roll already performed changes back to recovery point
-            // TODO: send error to member
-            
-            unsubscribe(bucket.getMember());   
-            
-            return;
-        } 
-        
-        for(LeaderEndpoint endpoint: this.endpoints.values()){
-            if(endpoint != originEndpoint){
-                
-                //TODO: filter Nil type commands - no need to forward
-                // need a deep copy of operations since operations are mutable
-                Operation[] operations = new Operation[bucket.getOperations().length];
-                for(int i = 0; i < operations.length; i++){
-                    operations[i] = bucket.getOperations()[i].clone();
+            bucket = originEndpoint.receive(bucket);
+
+            model.test(bucket.getOperations());
+
+            this.clock.tick();
+
+            model.apply(bucket.getOperations());
+
+            if (this.operationHandler != null) {
+                for (Operation operation : bucket.getOperations()) {
+                    operationHandler.handleOperation(operation);
                 }
-                              
+            }
+
+        } catch (EndpointException e) {
+
+            unregister(bucket.getMember());
+
+            throw new LeaderException("Cannot contextualize bucket.", e);
+        } catch (ObjectException | CommandException e) {
+
+            unregister(bucket.getMember());
+
+            throw new LeaderException("Changes cannot be applied.", e);
+        }
+
+        for (Map.Entry<UUID, LeaderEndpoint> entry: endpoints.entrySet()) {
+            UUID member             = entry.getKey();
+            LeaderEndpoint endpoint = entry.getValue();
+
+            if (endpoint != originEndpoint) {
+                // need a deep copy of operations since operations are mutable - prune Nil
+                LinkedList<Operation> operations = new LinkedList<Operation>();
+                for (Operation operation: bucket.getOperations()) {
+                    if(!(operation.getCommand() instanceof Nil)) operations.add(operation.clone());
+                }
+
                 try {
-                    endpoint.send(new UpdateBucket(bucket.getMember(), endpoint.getRemoteTime(), this.clock.getTime(), operations));
+                    Bucket update = endpoint.send(
+                                    new UpdateBucket(
+                                        bucket.getMember(),
+                                        endpoint.getRemoteTime(),
+                                        this.clock.getTime(),
+                                        operations.toArray(new Operation[operations.size()])));
+
+                    bucketHandler.handle(member, update);
+
                 } catch (EndpointException e) {
-                    // TODO: unsubscribe - client uuid of endpoint should be obtainable from endpoint itself
+                    unregister(member);
                 }
             }
         }
     }
+
+    /*
+     * Leader(transformer)
+     * setData(operations)
+     * getData
+     * onBucket((bucket)->{})
+     * add(member)
+     * update(bucket)
+     * remove(member)
+     *
+     * TODO:
+     * - find a solution for initialization / synch messages
+     * - tidy up the interface chaos - separate concern on leader and member level (not endpoint)
+     * - rename interface methods on endpoint and endpoint itself - think of name Leader and Member
+     * - add proper state management at Member and thread safety
+     */
         
 }

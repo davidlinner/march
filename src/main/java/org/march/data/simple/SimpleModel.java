@@ -52,6 +52,11 @@ public class SimpleModel implements Model{
     	}
     }
 
+    @Override
+    public void test(Operation... operations) throws ObjectException, CommandException {
+
+    }
+
     public void apply(Pointer pointer, Command... commands) throws ObjectException, CommandException{        
         Pointable pointable;
         

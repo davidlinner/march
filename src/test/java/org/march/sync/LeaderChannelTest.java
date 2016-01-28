@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.LinkedList;
 import java.util.UUID;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.junit.After;
 import org.junit.Before;
@@ -48,7 +47,7 @@ public class LeaderChannelTest {
         TRANSFORMER.addInclusion(new InsertInsertInclusion());
     }
         
-    private LeaderEndpoint channel;
+    private LeaderEndpoint endpoint;
        
     final LinkedList<Bucket> inboundBuffer = new LinkedList<Bucket>();
     final LinkedList<Bucket> outboundBuffer = new LinkedList<Bucket>();
@@ -56,20 +55,7 @@ public class LeaderChannelTest {
     
     @Before
     public void setupChannel() throws EndpointException{
-        channel = new LeaderEndpoint(TRANSFORMER, new ReentrantLock());
-        channel.connectOutbound(new BucketHandler() {            
-            public void handle(Bucket message) {
-                outboundBuffer.add(message);
-            }
-        });          
-        
-        channel.connectInbound(new BucketHandler() {            
-            public void handle(Bucket message) {
-                inboundBuffer.add(message);
-            }
-        });   
-        
-        channel.open();
+        endpoint = new LeaderEndpoint(TRANSFORMER);
     }
     
     @After
@@ -89,11 +75,11 @@ public class LeaderChannelTest {
         UpdateBucket m0 = new UpdateBucket(member0, 0, clk.tick(), ol0);
         UpdateBucket m1 = new UpdateBucket(member0, 0, clk.tick(), ol1);
         
-        channel.send(m0);
-        channel.send(m1);
+        endpoint.send(m0);
+        endpoint.send(m1);
         
-        assertEquals(outboundBuffer.size(), 2);
-        assertEquals(channel.getRemoteTime(), 0);
+        //assertEquals(outboundBuffer.size(), 2);
+        assertEquals(endpoint.getRemoteTime(), 0);
     } 
     
     
@@ -108,11 +94,10 @@ public class LeaderChannelTest {
         UpdateBucket m0 = new UpdateBucket(member0, clk.tick(), 0, ol0);
         UpdateBucket m1 = new UpdateBucket(member0, clk.tick(), 0, ol1);
         
-        channel.receive(m0);
-        channel.receive(m1);
+        endpoint.receive(m0);
+        endpoint.receive(m1);
         
-        assertEquals(inboundBuffer.size(), 2);
-        assertEquals(channel.getRemoteTime(), 2);
+        assertEquals(endpoint.getRemoteTime(), 2);
                     
     }
         
@@ -125,15 +110,14 @@ public class LeaderChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        UpdateBucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
-        UpdateBucket mm = new UpdateBucket(member1, cm.tick(), 0, ol1);
+        Bucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
+        Bucket mm = new UpdateBucket(member1, cm.tick(), 0, ol1);
         
-        channel.send(ml);
-        channel.receive(mm);
-        
-        assertEquals(inboundBuffer.size(), 1);
-        assertEquals(c2, inboundBuffer.getFirst().getOperations()[0]);
-        assertEquals(d2, inboundBuffer.getFirst().getOperations()[1]);
+        ml = endpoint.send(ml);
+        mm = endpoint.receive(mm);
+
+        assertEquals(c2, mm.getOperations()[0]);
+        assertEquals(d2, mm.getOperations()[1]);
     }
     
     @Test
@@ -144,14 +128,13 @@ public class LeaderChannelTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
                       
-        UpdateBucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
-        UpdateBucket mm = new UpdateBucket(member1, cm.tick(), cl.getTime(), ol1);              
+        Bucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
+        Bucket mm = new UpdateBucket(member1, cm.tick(), cl.getTime(), ol1);
         
-        channel.send(ml);
-        channel.receive(mm);
+        ml = endpoint.send(ml);
+        mm = endpoint.receive(mm);
         
-        assertEquals(inboundBuffer.size(), 1);
-        assertEquals(c0,inboundBuffer.getFirst().getOperations()[0]);
-        assertEquals(d0,inboundBuffer.getFirst().getOperations()[1]);
+        assertEquals(c0,mm.getOperations()[0]);
+        assertEquals(d0,mm.getOperations()[1]);
     } 
 }

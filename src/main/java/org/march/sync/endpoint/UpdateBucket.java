@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import org.march.data.Operation;
 
+import org.march.data.Tools;
+
 public class UpdateBucket extends Bucket{
 
 	/**
@@ -20,5 +22,10 @@ public class UpdateBucket extends Bucket{
 			Operation[] operations) {
 		super(member, memberTime, leaderTime, operations);
 	}
-	
+
+	@Override
+	public Bucket clone() {
+		return new UpdateBucket(this.getMember(), this.getMemberTime(), this.getLeaderTime(), Tools.clone(this.getOperations()));
+	}
+
 }

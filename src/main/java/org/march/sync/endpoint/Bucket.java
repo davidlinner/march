@@ -61,9 +61,7 @@ public abstract class Bucket implements Cloneable, Serializable{
         this.operations = operations;
     }        
     
-    public Bucket clone(){
-        return new UpdateBucket(member, memberTime, leaderTime, operations);
-    }
+    public abstract Bucket clone();
     
     public Bucket memberTime(int memberTime){
         this.memberTime = memberTime;

@@ -8,7 +8,7 @@ import org.march.sync.transform.Transformer;
 
 
 // TODO: add member uuid as field and check member of message against this field on reception 
-public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
+public abstract class Endpoint {
 
 	private Transformer transformer;
 	private int remoteTime;
@@ -18,26 +18,16 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 	private BucketHandler inboundHandler = null;
 	private BucketHandler outboundHandler = null;
 
-	private ReentrantLock lock;
-		
-	private EndpointState state = EndpointState.INITIALIZED;
 
-	public Endpoint(Transformer transformer, ReentrantLock lock) {
+	public Endpoint(Transformer transformer) {
 		this.transformer = transformer;
-		this.lock = lock;
 
 		this.remoteTime = 0;
 
 		this.queue = new LinkedList<Bucket>();
 	}
 
-	public void receive(Bucket bucket) throws EndpointException {
-		if (state != EndpointState.OPEN){
-			throw new EndpointException(
-					String.format("Endpoint has to be open to receive messages. Current state is %s.", state));
-		}
-		
-		lock.lock();
+	public Bucket receive(Bucket bucket) throws EndpointException {
 
 		// remove messages member has seen already
 		try {
@@ -63,107 +53,26 @@ public abstract class Endpoint implements InboundEndpoint, OutboundEndpoint {
 														// preserved on empty
 														// queue
 
-			inboundHandler.handle(bucket);
+			return bucket;
 
 		} catch (Exception e) {
 			throw new EndpointException(e);
-		} finally {
-			lock.unlock();
 		}
 	}
 
-	public OutboundEndpoint connectOutbound(BucketHandler handler) {
-
-		if (outboundHandler == null){
-			this.outboundHandler = handler;						
-		}
-
-		return this;
-	}
-
-	public OutboundEndpoint disconnectOutbound() {
-		this.outboundHandler = null;
-		this.state = EndpointState.CLOSED;
-		
-		return this;
-	}
-
-	public void send(Bucket bucket) throws EndpointException {
-		
-		if(state == EndpointState.CLOSED){
-			throw new EndpointException("Endpoint was closed.");
-		}
+	public Bucket send(Bucket bucket) throws EndpointException {
 		
 		if (getRemoteTime(bucket) != this.remoteTime) {
 			throw new EndpointException("Message is out of synchronization.");
 		}
 
-		boolean isExclsuive = lock.isHeldByCurrentThread();
-		if (!isExclsuive) {
-			lock.lock();
-		}
+		queue.offer(bucket.clone());
 
-		try {
-			queue.offer(bucket);
-			if (state == EndpointState.OPEN) {
-				outboundHandler.handle(bucket);
-			}
-		} finally {
-			if (!isExclsuive) {
-				lock.unlock();
-			}
-		}
-	}
-
-	public InboundEndpoint connectInbound(BucketHandler handler) {
-		if (handler != null && inboundHandler == null) {
-			inboundHandler = handler;
-		}
-
-		return this;
-	}
-
-	public InboundEndpoint disconnectInbound() {
-		this.inboundHandler = null;
-		this.state = EndpointState.CLOSED;
-		return this;
+		return bucket;
 	}
 
 	public int getRemoteTime() {
 		return this.remoteTime;
-	}
-
-	public void open() throws EndpointException {
-		
-		if(state == EndpointState.OPEN) {
-			throw new EndpointException("Endpoint already opened.");
-		};
-		
-		if(!isConnected()){
-			throw new EndpointException("Cannot open endpoint. Message handler missing on in- or outbound channel.");
-		}
-		
-		this.state = EndpointState.OPEN;
-		
-		boolean isExclusive = lock.isHeldByCurrentThread();
-		if (!isExclusive) {
-			lock.lock();
-		}
-
-		try {
-			for (Bucket bucket : queue) {
-				outboundHandler.handle(bucket);
-			}
-		} finally {
-			if (!isExclusive) {
-				lock.unlock();
-			}
-		}		
-	}	
-		
-	public boolean isConnected() {
-		return this.outboundHandler != null &&
-				this.inboundHandler != null;
 	}
 
 	protected abstract int getLocalTime(Bucket bucket);

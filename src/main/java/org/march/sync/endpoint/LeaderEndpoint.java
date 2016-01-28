@@ -6,8 +6,8 @@ import org.march.sync.transform.Transformer;
 
 public class LeaderEndpoint extends Endpoint {
 
-    public LeaderEndpoint(Transformer transformer, ReentrantLock lock) {
-        super(transformer, lock);
+    public LeaderEndpoint(Transformer transformer) {
+        super(transformer);
     }
 
     @Override
@@ -16,9 +16,8 @@ public class LeaderEndpoint extends Endpoint {
     }
 
     @Override
-    protected void setLocalTime(Bucket message, int time) {
-        message.setLeaderTime(time);
-        
+    protected void setLocalTime(Bucket bucket, int time) {
+        bucket.setLeaderTime(time);
     }
 
     @Override
