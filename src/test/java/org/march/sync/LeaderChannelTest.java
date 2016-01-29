@@ -48,20 +48,11 @@ public class LeaderChannelTest {
     }
         
     private LeaderEndpoint endpoint;
-       
-    final LinkedList<Bucket> inboundBuffer = new LinkedList<Bucket>();
-    final LinkedList<Bucket> outboundBuffer = new LinkedList<Bucket>();
-    
+
     
     @Before
     public void setupChannel() throws EndpointException{
         endpoint = new LeaderEndpoint(TRANSFORMER);
-    }
-    
-    @After
-    public void clearBuffers(){
-        inboundBuffer.clear();
-        outboundBuffer.clear();
     }
     
     @Test
@@ -108,10 +99,10 @@ public class LeaderChannelTest {
         Clock cm = new Clock();       
                
         Operation[] ol0 = new Operation[]{a0, b0}, 
-                    ol1 = new Operation[]{c0, d0}; 
-              
-        Bucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
-        Bucket mm = new UpdateBucket(member1, cm.tick(), 0, ol1);
+                    ol1 = new Operation[]{c0, d0};
+
+        UpdateBucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
+        UpdateBucket mm = new UpdateBucket(member1, cm.tick(), 0, ol1);
         
         ml = endpoint.send(ml);
         mm = endpoint.receive(mm);
@@ -126,10 +117,10 @@ public class LeaderChannelTest {
         Clock cm = new Clock();        
                
         Operation[] ol0 = new Operation[]{a0, b0}, 
-                    ol1 = new Operation[]{c0, d0}; 
-                      
-        Bucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
-        Bucket mm = new UpdateBucket(member1, cm.tick(), cl.getTime(), ol1);
+                    ol1 = new Operation[]{c0, d0};
+
+        UpdateBucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
+        UpdateBucket mm = new UpdateBucket(member1, cm.tick(), cl.getTime(), ol1);
         
         ml = endpoint.send(ml);
         mm = endpoint.receive(mm);

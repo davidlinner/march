@@ -13,7 +13,7 @@ public abstract class Endpoint {
 	private Transformer transformer;
 	private int remoteTime;
 
-	private LinkedList<Bucket> queue;
+	private LinkedList<UpdateBucket> queue;
 
 	private BucketHandler inboundHandler = null;
 	private BucketHandler outboundHandler = null;
@@ -24,10 +24,10 @@ public abstract class Endpoint {
 
 		this.remoteTime = 0;
 
-		this.queue = new LinkedList<Bucket>();
+		this.queue = new LinkedList<UpdateBucket>();
 	}
 
-	public Bucket receive(Bucket bucket) throws EndpointException {
+	public UpdateBucket receive(UpdateBucket bucket) throws EndpointException {
 
 		// remove messages member has seen already
 		try {
@@ -60,7 +60,7 @@ public abstract class Endpoint {
 		}
 	}
 
-	public Bucket send(Bucket bucket) throws EndpointException {
+	public UpdateBucket send(UpdateBucket bucket) throws EndpointException {
 		
 		if (getRemoteTime(bucket) != this.remoteTime) {
 			throw new EndpointException("Message is out of synchronization.");
@@ -73,6 +73,10 @@ public abstract class Endpoint {
 
 	public int getRemoteTime() {
 		return this.remoteTime;
+	}
+
+	public void setRemoteTime(int remoteTime) {
+		this.remoteTime = remoteTime;
 	}
 
 	protected abstract int getLocalTime(Bucket bucket);

@@ -3,7 +3,6 @@ package org.march.sync;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.UUID;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.march.data.Command;
 import org.march.data.CommandException;
@@ -29,7 +28,7 @@ public class Member {
 
     private HashSet<OperationHandler> commandHandlers = new HashSet<OperationHandler>();
 
-    private BucketHandler bucketHandler;
+    private BucketHandler<UpdateBucket> bucketHandler;
 
     public Member(UUID name, Transformer transformer){
         this.name = name;
@@ -40,15 +39,25 @@ public class Member {
         model   = new SimpleModel();
     }
 
-    public void onBucket(BucketHandler bucketHandler){
+    public void initialize(BaseBucket bucket) throws MemberException {
+        try {
+            model.apply(bucket.getOperations());
+            channel.setRemoteTime(bucket.getLeaderTime());
+            clock.setTime(bucket.getMemberTime());
+        } catch (ObjectException | CommandException e) {
+            throw new MemberException("Cannot initialize member.", e);
+        }
+    }
+
+    public void onBucket(BucketHandler<UpdateBucket> bucketHandler){
         this.bucketHandler = bucketHandler;
     }
 
-    public void apply(Pointer pointer, Command command) throws MemberException{
+    public synchronized void apply(Pointer pointer, Command command) throws MemberException{
         try {
             model.apply(pointer, command);
 
-            Bucket bucket = new UpdateBucket(this.name, clock.tick(), channel.getRemoteTime(),
+            UpdateBucket bucket = new UpdateBucket(this.name, clock.tick(), channel.getRemoteTime(),
                     new Operation[]{new Operation(pointer, command)});
 
             bucket = channel.send(bucket);
@@ -62,11 +71,9 @@ public class Member {
         }
     }
 
-    public void update(Bucket bucket) throws MemberException {
+    public synchronized void update(UpdateBucket bucket) throws MemberException {
         try {
 
-            //FIXME: temp quirk
-            if(bucket instanceof SynchronizationBucket) return;
 
             bucket = channel.receive(bucket);
 
@@ -84,12 +91,12 @@ public class Member {
         }
     }
 
-    public Data find(Pointer pointer, String identifier)
+    public synchronized Data find(Pointer pointer, String identifier)
             throws ObjectException, CommandException {
         return model.find(pointer, identifier);
     }
 
-    public Data find(Pointer pointer, int index) throws ObjectException,
+    public synchronized Data find(Pointer pointer, int index) throws ObjectException,
             CommandException {
         return model.find(pointer, index);
     }

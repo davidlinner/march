@@ -11,7 +11,9 @@ import org.march.data.ObjectException;
 import org.march.data.Operation;
 import org.march.data.StringConstant;
 import org.march.data.command.Set;
+import org.march.sync.endpoint.Bucket;
 import org.march.sync.endpoint.EndpointException;
+import org.march.sync.endpoint.UpdateBucket;
 import org.march.sync.transform.Transformer;
 
 public class SynchronizationTest {
@@ -25,31 +27,29 @@ public class SynchronizationTest {
     private StringConstant a = new StringConstant("A");
     private StringConstant b = new StringConstant("B");
 
-    private LazyBucketHandler lazyHandler;
+    private BufferedBucketHandler<UpdateBucket> downLink1;
+    private BufferedBucketHandler<UpdateBucket> downLink2;
+    private BufferedBucketHandler<UpdateBucket> upLink1;
+    private BufferedBucketHandler<UpdateBucket> upLink2;
 
     static Transformer TRANSFORMER = new Transformer();
 
     @Before
-    public void setup() throws LeaderException, EndpointException{
+    public void setup() throws LeaderException, EndpointException, MemberException {
         leader = new Leader( TRANSFORMER);
         member1 = new Member(name1, TRANSFORMER);
         member2 = new Member(name2, TRANSFORMER);
 
-        lazyHandler = new LazyBucketHandler((member, bucket)->{
+        downLink1 = new BufferedBucketHandler<UpdateBucket>((member, bucket)-> { try { member1.update(bucket); } catch (Throwable e) {}});
+        downLink2 = new BufferedBucketHandler<UpdateBucket>((member, bucket)-> { try { member2.update(bucket); } catch (Throwable e) {}});
+        upLink1 = new BufferedBucketHandler<UpdateBucket>((member,bucket) ->{
             try {
-                if (member.equals(name1)){
-                    member1.update(bucket);
-                } else if (member.equals(name2)){
-                    member2.update(bucket);
-                }
-            } catch (MemberException e) {
+                leader.update(bucket);
+            } catch (LeaderException e) {
                 e.printStackTrace();
             }
         });
-
-        leader.onBucket(lazyHandler);
-
-        member1.onBucket((member,bucket)->{
+        upLink2 = new BufferedBucketHandler<UpdateBucket>((member,bucket)->{
             try {
                 leader.update(bucket);
             } catch (LeaderException e) {
@@ -57,26 +57,36 @@ public class SynchronizationTest {
             }
         });
 
-        member2.onBucket((member,bucket)->{
-            try {
-                leader.update(bucket);
-            } catch (LeaderException e) {
-                e.printStackTrace();
+        leader.onBucket((member, bucket)->{
+            if (member.equals(name1)){
+                downLink1.handle(member, bucket);
+            } else if (member.equals(name2)){
+                downLink2.handle(member, bucket);
             }
         });
 
-        leader.share(new Operation[0], (operation)->{});
+        member1.onBucket(upLink1);
+        member2.onBucket(upLink2);
 
-        leader.register(name1);
-        leader.register(name2);
+        leader.share(new Operation[0], (operation) -> {});
+
+        member1.initialize(leader.register(name1));
+        member2.initialize(leader.register(name2));
     }
 
+
+    private void flushAll(){
+        upLink1.flush();
+        upLink2.flush();
+        downLink1.flush();
+        downLink2.flush();
+    };
 
     @Test
     public void testOneWaySynchronization() throws EndpointException, MemberException, ObjectException, CommandException {
         member1.apply(null, new Set("a", a));
 
-        lazyHandler.flush();
+        flushAll();
 
         assertEquals(member2.find(null, "a"), a);
     }
@@ -86,8 +96,7 @@ public class SynchronizationTest {
         member1.apply(null, new Set("a", a));
         member2.apply(null, new Set("b", b));
 
-
-        lazyHandler.flush();
+        flushAll();
 
         assertEquals(member2.find(null, "a"), a);
         assertEquals(member1.find(null, "b"), b);
@@ -101,7 +110,7 @@ public class SynchronizationTest {
         assertEquals(a, member1.find(null, "a"));
         assertEquals(b, member2.find(null, "a"));
 
-        lazyHandler.flush();
+        flushAll();
 
         assertEquals(a, member1.find(null, "a"));
         assertEquals(a, member2.find(null, "a"));

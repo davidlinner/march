@@ -24,8 +24,7 @@ public class UpdateBucket extends Bucket{
 	}
 
 	@Override
-	public Bucket clone() {
+	public UpdateBucket clone() {
 		return new UpdateBucket(this.getMember(), this.getMemberTime(), this.getLeaderTime(), Tools.clone(this.getOperations()));
 	}
-
 }

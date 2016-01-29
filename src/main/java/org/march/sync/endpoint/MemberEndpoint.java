@@ -16,7 +16,7 @@ public class MemberEndpoint extends Endpoint {
     }
 
     @Override
-    protected void setLocalTime(Bucket message, int time) {        
+    protected void setLocalTime(Bucket message, int time) {
         message.setMemberTime(time);
     }
 

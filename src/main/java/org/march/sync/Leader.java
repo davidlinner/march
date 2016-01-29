@@ -15,7 +15,7 @@ import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.LeaderEndpoint;
 import org.march.sync.endpoint.Bucket;
 import org.march.sync.endpoint.BucketHandler;
-import org.march.sync.endpoint.SynchronizationBucket;
+import org.march.sync.endpoint.BaseBucket;
 import org.march.sync.endpoint.UpdateBucket;
 import org.march.sync.transform.Transformer;
 
@@ -31,7 +31,7 @@ public class Leader {
 
     private OperationHandler operationHandler;
 
-    private BucketHandler bucketHandler;
+    private BucketHandler<UpdateBucket> bucketHandler;
 
     private LeaderState state = LeaderState.INITIALIZED;
 
@@ -72,51 +72,34 @@ public class Leader {
         this.operationHandler = null;
     }
     
-    public Operation[] read(){
-    	try {
-			return this.model.serialize();
-		} catch (ObjectException e) {
-			//TODO: add debug logging here - must not happen / no reasonable treatment 
-		}
-    	
-    	return null;
+    public Operation[] read() {
+        return this.model.serialize();
     }
 
-    public synchronized void onBucket(BucketHandler bucketHandler) throws LeaderException {
+    public synchronized void onBucket(BucketHandler<UpdateBucket> bucketHandler) throws LeaderException {
         if(this.state != LeaderState.INITIALIZED) throw new LeaderException("Can only change bucket listener before start sharing.");
         this.bucketHandler = bucketHandler;
     }
 
-    public synchronized void register(UUID member) throws LeaderException{
+    public synchronized BaseBucket register(UUID member) throws LeaderException{
 
         if (state != LeaderState.SHARING) throw new LeaderException("Can only add members when actively sharing data.");
 
         if (!endpoints.containsKey(member)) {
             final LeaderEndpoint endpoint = new LeaderEndpoint(this.transformer);
-
             this.endpoints.put(member, endpoint);
 
-//            try {
-//                // push synchronization message for new member into buffer
-//                Operation[] operations = this.model.serialize();
-//
-//                Bucket bucket = endpoint.send(new SynchronizationBucket(member, endpoint.getRemoteTime(), this.clock.getTime(), operations));
-//
-//                this.bucketHandler.handle(bucket);
-//            } catch (ObjectException | EndpointException e) {
-//                throw new LeaderException("Adding member failed. Inconsistent leader state.", e);
-//            }
+            return new BaseBucket(member, endpoint.getRemoteTime(), this.clock.getTime(), this.model.serialize());
         } else {
             throw new LeaderException("Member is already subscribed.");
         }
-
     }
     
     public synchronized void unregister(UUID member){
         LeaderEndpoint endpoint = endpoints.remove(member);
     }
 
-    public synchronized void update(Bucket bucket) throws LeaderException {
+    public synchronized void update(UpdateBucket bucket) throws LeaderException {
 
         if (state != LeaderState.SHARING) throw new LeaderException("Can only add members when actively sharing data.");
 
@@ -165,7 +148,7 @@ public class Leader {
                 }
 
                 try {
-                    Bucket update = endpoint.send(
+                    UpdateBucket update = endpoint.send(
                                     new UpdateBucket(
                                         bucket.getMember(),
                                         endpoint.getRemoteTime(),
@@ -191,10 +174,9 @@ public class Leader {
      * remove(member)
      *
      * TODO:
-     * - find a solution for initialization / synch messages
      * - tidy up the interface chaos - separate concern on leader and member level (not endpoint)
+     * - add proper state management at Member and check thread safety
      * - rename interface methods on endpoint and endpoint itself - think of name Leader and Member
-     * - add proper state management at Member and thread safety
      */
         
 }

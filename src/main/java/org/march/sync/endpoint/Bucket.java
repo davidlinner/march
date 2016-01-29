@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.UUID;
 
 import org.march.data.Operation;
+import org.march.data.Tools;
 
 
 public abstract class Bucket implements Cloneable, Serializable{
@@ -59,10 +60,8 @@ public abstract class Bucket implements Cloneable, Serializable{
 
     public void setOperations(Operation[] operations) {
         this.operations = operations;
-    }        
-    
-    public abstract Bucket clone();
-    
+    }
+
     public Bucket memberTime(int memberTime){
         this.memberTime = memberTime;
         return this;
@@ -74,6 +73,4 @@ public abstract class Bucket implements Cloneable, Serializable{
                 + ", leaderTime=" + leaderTime + ", operations="
                 + Arrays.toString(operations) + "]";
     }
-    
-    
 }

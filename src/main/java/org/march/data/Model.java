@@ -13,6 +13,6 @@ public interface Model {
     
     public Operation[] serialize(Pointer pointer) throws ObjectException;
     
-    public Operation[] serialize() throws ObjectException;
+    public Operation[] serialize();
     
 }

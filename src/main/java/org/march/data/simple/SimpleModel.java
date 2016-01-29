@@ -1,10 +1,7 @@
 package org.march.data.simple;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.UUID;
 
 import org.march.data.Command;
 import org.march.data.CommandException;
@@ -152,12 +149,21 @@ public class SimpleModel implements Model{
 
 	@Override
 	public Operation[] serialize(Pointer pointer) throws ObjectException {
-		List<Operation> operations = serialize(pointer, memory.get(pointer));
-		return operations.toArray(new Operation[operations.size()]);
+
+        if (pointer == null) return serialize();
+
+        Pointable pointable = memory.get(pointer);
+
+        if(pointable == null ) {
+            throw new NoSuchObjectException("Object unknown.");
+        }
+
+        List<Operation> operations = serialize(pointer, pointable);
+        return operations.toArray(new Operation[operations.size()]);
 	}
 	
 	@Override
-	public Operation[] serialize() throws ObjectException {
+	public Operation[] serialize() {
 		Pointer pointer;
 		List<Operation> operations = new LinkedList<Operation>();
 			
@@ -168,29 +174,25 @@ public class SimpleModel implements Model{
 			if(pointer != null){
 				operations.add(new Operation(pointer, new Construct(getType(entry.getValue()))));
 			}
-			
-			operations.addAll(serialize(pointer, entry.getValue())); 									
+
+            operations.addAll(serialize(pointer, entry.getValue()));
 		}				
 		
 		return operations.toArray(new Operation[operations.size()]);
 	}
 	
-	private List<Operation> serialize(Pointer pointer, Pointable pointable) throws ObjectException{
-		if(pointable == null ){
-            throw new NoSuchObjectException("Object unknown.");
-        } else if(pointable instanceof Sequence){
+	private List<Operation> serialize(Pointer pointer, Pointable pointable){
+		if(pointable instanceof Sequence){
         	return serializeSequence(pointer, (Sequence)pointable);
         } else if(pointable instanceof Hash){
         	return serializeHash(pointer, (Hash)pointable);
         } else {
-        	throw new ObjectException("Unknown type of data structure.");
+        	return null;
         }		
 	}
 	
-	private Type getType(Pointable pointable) throws NoSuchObjectException{
-		if(pointable == null ){
-            throw new NoSuchObjectException("Object unknown.");
-        } else if(pointable instanceof Sequence){
+	private Type getType(Pointable pointable) {
+		if(pointable instanceof Sequence){
         	return Type.SEQUENCE;
         } else if(pointable instanceof Hash){
         	return Type.HASH;
