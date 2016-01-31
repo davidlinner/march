@@ -1,6 +1,7 @@
 package org.march.sync;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.UUID;
 
@@ -26,34 +27,38 @@ public class Member {
 
     private Model model;
 
-    private HashSet<OperationHandler> commandHandlers = new HashSet<OperationHandler>();
+    private HashSet<Listener> listeners = new HashSet<Listener>();
 
-    private BucketHandler<UpdateBucket> bucketHandler;
+    private BucketHandler bucketHandler;
 
-    public Member(UUID name, Transformer transformer){
-        this.name = name;
+    private State state = State.INITIALIZED;
 
+    private final static EnumSet<State> ACCEPT_UPDATES = EnumSet.of(State.SHARING,State.TERMINATING);
+
+    public Member(Transformer transformer){
         clock   = new Clock();
         channel = new MemberEndpoint(transformer);
 
         model   = new SimpleModel();
     }
 
-    public void initialize(BaseBucket bucket) throws MemberException {
-        try {
-            model.apply(bucket.getOperations());
-            channel.setRemoteTime(bucket.getLeaderTime());
-            clock.setTime(bucket.getMemberTime());
-        } catch (ObjectException | CommandException e) {
-            throw new MemberException("Cannot initialize member.", e);
+    public synchronized void close(){
+        state = State.TERMINATING;
+
+        for(Listener listener : listeners){
+            if(listener instanceof CloseListener) ((CloseListener) listener).closed(this);
         }
+
     }
 
-    public void onBucket(BucketHandler<UpdateBucket> bucketHandler){
+    public void onBucket(BucketHandler bucketHandler) throws MemberException {
+        if(!State.INITIALIZED.equals(state)) throw new MemberException("Can only set bucket handler when sharing was not yet started.");
         this.bucketHandler = bucketHandler;
     }
 
     public synchronized void apply(Pointer pointer, Command command) throws MemberException{
+        if(!State.SHARING.equals(state)) throw new MemberException("Can only change data when sharing.");
+
         try {
             model.apply(pointer, command);
 
@@ -64,50 +69,83 @@ public class Member {
 
             this.bucketHandler.handle(null, bucket);
         } catch (EndpointException e) {
-            //TODO: check reinit on channelexception
             throw new MemberException(e);
         } catch (ObjectException|CommandException e){
             throw new MemberException(e);
         }
     }
 
-    public synchronized void update(UpdateBucket bucket) throws MemberException {
-        try {
+    public synchronized void update(Bucket bucket) throws MemberException {
 
+        if(bucket instanceof BaseBucket){
+            if (!State.INITIALIZED.equals(state)) throw new MemberException("Already initialized. Cannot reset data.");
 
-            bucket = channel.receive(bucket);
-
-            for(Operation operation: bucket.getOperations()){
-                model.apply(operation.getPointer(), operation.getCommand());
-
-                for(OperationHandler handler: Member.this.commandHandlers){
-                    handler.handleOperation(operation);
-                }
+            try {
+                name = bucket.getMember();
+                model.apply(bucket.getOperations());
+                channel.setRemoteTime(bucket.getLeaderTime());
+                clock.setTime(bucket.getMemberTime());
+            } catch (ObjectException | CommandException e) {
+                throw new MemberException("Cannot initialize member.", e);
             }
-        } catch (ObjectException|CommandException  e) {
-            throw new MemberException("Cannot apply changes to state consistently.", e);
-        } catch (EndpointException e) {
-            throw new MemberException("Failed to contextualize bucket.", e);
+
+            state = State.SHARING;
+
+            for(Listener listener : listeners){
+                if(listener instanceof OpenListener) ((OpenListener) listener).opened(this);
+            }
+
+        } else if(bucket instanceof UpdateBucket) {
+            if (!ACCEPT_UPDATES.contains(state)) throw new MemberException("Can only accept updates when sharing data or terminating.");
+
+            try {
+                bucket = channel.receive((UpdateBucket)bucket);
+
+                model.apply(bucket.getOperations());
+
+                for(Listener listener : listeners){
+                    if(listener instanceof ChangeListener) ((ChangeListener) listener).changed(this, bucket.getOperations());
+                }
+
+
+                if(State.TERMINATING.equals(state) && channel.isEmpty()){
+                    //out buffer is empty, a buckets have been confirmed by server
+                    state = State.TERMINATED;
+
+                    for(Listener listener : listeners){
+                        if(listener instanceof CloseListener) ((CloseListener) listener).closed(this);
+                    }
+                }
+
+            } catch (ObjectException | CommandException e) {
+                throw new MemberException("Cannot apply changes to state consistently.", e);
+            } catch (EndpointException e) {
+                throw new MemberException("Failed to contextualize bucket.", e);
+            }
         }
     }
 
     public synchronized Data find(Pointer pointer, String identifier)
             throws ObjectException, CommandException {
+
+        // todo: log warning wenn reading is performed while member is not yet sharing data
         return model.find(pointer, identifier);
     }
 
-    public synchronized Data find(Pointer pointer, int index) throws ObjectException,
-            CommandException {
+    public synchronized Data find(Pointer pointer, int index) throws ObjectException, CommandException {
+        // todo: log warning wenn reading is performed while member is not yet sharing data
         return model.find(pointer, index);
     }
 
-    public void onCommand(OperationHandler... handlers){
-        this.commandHandlers.addAll(Arrays.asList(handlers));
+    public synchronized void addListener(Listener... listeners){
+        this.listeners.addAll(Arrays.asList(listeners));
     }
 
-    public void offCommand(OperationHandler... handlers){
-        if(handlers.length == 0){
-            this.commandHandlers.clear();
+    public synchronized void removeListener(Listener... listeners){
+        if(listeners.length == 0){
+            this.listeners.clear();
+        } else {
+            this.listeners.removeAll(Arrays.asList(listeners));
         }
     }
     

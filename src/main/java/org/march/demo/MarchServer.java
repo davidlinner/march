@@ -10,7 +10,6 @@ import java.util.UUID;
 
 import org.march.sync.Leader;
 import org.march.sync.LeaderException;
-import org.march.sync.endpoint.OutboundEndpoint;
 import org.march.sync.transform.Transformer;
 
 public class MarchServer implements Runnable {

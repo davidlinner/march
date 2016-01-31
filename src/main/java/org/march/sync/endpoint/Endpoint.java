@@ -71,6 +71,10 @@ public abstract class Endpoint {
 		return bucket;
 	}
 
+	public boolean isEmpty(){
+		return queue.isEmpty();
+	}
+
 	public int getRemoteTime() {
 		return this.remoteTime;
 	}

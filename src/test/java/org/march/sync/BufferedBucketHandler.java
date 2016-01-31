@@ -10,18 +10,18 @@ import java.util.UUID;
 /**
  * Created by dli on 28.01.2016.
  */
-public class BufferedBucketHandler <T extends Bucket> implements BucketHandler<T>{
+public class BufferedBucketHandler implements BucketHandler{
 
     private LinkedList<Message> queue = new LinkedList<Message>();
 
     private BucketHandler delegate;
 
-    public BufferedBucketHandler(BucketHandler<T> delegate){
+    public BufferedBucketHandler(BucketHandler delegate){
         this.delegate = delegate;
     }
 
     @Override
-    public void handle(UUID member,Bucket bucket) {
+    public void handle(UUID member, Bucket bucket) {
         queue.add(new Message(member, bucket));
     }
 

@@ -11,7 +11,6 @@ import org.march.data.ObjectException;
 import org.march.data.Operation;
 import org.march.data.StringConstant;
 import org.march.data.command.Set;
-import org.march.sync.endpoint.Bucket;
 import org.march.sync.endpoint.EndpointException;
 import org.march.sync.endpoint.UpdateBucket;
 import org.march.sync.transform.Transformer;
@@ -27,29 +26,29 @@ public class SynchronizationTest {
     private StringConstant a = new StringConstant("A");
     private StringConstant b = new StringConstant("B");
 
-    private BufferedBucketHandler<UpdateBucket> downLink1;
-    private BufferedBucketHandler<UpdateBucket> downLink2;
-    private BufferedBucketHandler<UpdateBucket> upLink1;
-    private BufferedBucketHandler<UpdateBucket> upLink2;
+    private BufferedBucketHandler downLink1;
+    private BufferedBucketHandler downLink2;
+    private BufferedBucketHandler upLink1;
+    private BufferedBucketHandler upLink2;
 
     static Transformer TRANSFORMER = new Transformer();
 
     @Before
     public void setup() throws LeaderException, EndpointException, MemberException {
         leader = new Leader( TRANSFORMER);
-        member1 = new Member(name1, TRANSFORMER);
-        member2 = new Member(name2, TRANSFORMER);
+        member1 = new Member(TRANSFORMER);
+        member2 = new Member(TRANSFORMER);
 
-        downLink1 = new BufferedBucketHandler<UpdateBucket>((member, bucket)-> { try { member1.update(bucket); } catch (Throwable e) {}});
-        downLink2 = new BufferedBucketHandler<UpdateBucket>((member, bucket)-> { try { member2.update(bucket); } catch (Throwable e) {}});
-        upLink1 = new BufferedBucketHandler<UpdateBucket>((member,bucket) ->{
+        downLink1 = new BufferedBucketHandler((member, bucket)-> { try { member1.update(bucket); } catch (Throwable e) {}});
+        downLink2 = new BufferedBucketHandler((member, bucket)-> { try { member2.update(bucket); } catch (Throwable e) {}});
+        upLink1 = new BufferedBucketHandler((member,bucket) ->{
             try {
                 leader.update(bucket);
             } catch (LeaderException e) {
                 e.printStackTrace();
             }
         });
-        upLink2 = new BufferedBucketHandler<UpdateBucket>((member,bucket)->{
+        upLink2 = new BufferedBucketHandler((member,bucket)->{
             try {
                 leader.update(bucket);
             } catch (LeaderException e) {
@@ -70,8 +69,10 @@ public class SynchronizationTest {
 
         leader.share(new Operation[0], (operation) -> {});
 
-        member1.initialize(leader.register(name1));
-        member2.initialize(leader.register(name2));
+        leader.register(name1);
+        leader.register(name2);
+
+        flushAll();
     }
 
 

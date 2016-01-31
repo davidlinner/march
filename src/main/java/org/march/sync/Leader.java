@@ -11,12 +11,7 @@ import org.march.data.ObjectException;
 import org.march.data.Operation;
 import org.march.data.command.Nil;
 import org.march.data.simple.SimpleModel;
-import org.march.sync.endpoint.EndpointException;
-import org.march.sync.endpoint.LeaderEndpoint;
-import org.march.sync.endpoint.Bucket;
-import org.march.sync.endpoint.BucketHandler;
-import org.march.sync.endpoint.BaseBucket;
-import org.march.sync.endpoint.UpdateBucket;
+import org.march.sync.endpoint.*;
 import org.march.sync.transform.Transformer;
 
 public class Leader {
@@ -31,9 +26,9 @@ public class Leader {
 
     private OperationHandler operationHandler;
 
-    private BucketHandler<UpdateBucket> bucketHandler;
+    private BucketHandler bucketHandler;
 
-    private LeaderState state = LeaderState.INITIALIZED;
+    private State state = State.INITIALIZED;
 
     public Leader(Transformer transformer){
         this.endpoints      = new HashMap<UUID, LeaderEndpoint>();
@@ -46,7 +41,7 @@ public class Leader {
     
     public synchronized void share(Operation [] operations, OperationHandler operationHandler) throws LeaderException {
 
-        if (state != LeaderState.INITIALIZED)
+        if (state != State.INITIALIZED)
             throw new LeaderException("Cannot reset data once sharing was started.");
 
 
@@ -58,38 +53,40 @@ public class Leader {
             throw new LeaderException("Cannot load operations into a consistent state representation model.", e);
         }
 
-        state = LeaderState.SHARING;
+        state = State.SHARING;
 
     }
 
     public synchronized void unshare(){
+        //todo: think of a graceful shutdown - this will kill locally comitted changes without saving them
         for(UUID member: endpoints.keySet()){
             unregister(member);
         }
 
-        state = LeaderState.READ_ONLY;
+        state = State.TERMINATED;
 
         this.operationHandler = null;
     }
     
-    public Operation[] read() {
+    public synchronized Operation[] read() {
         return this.model.serialize();
     }
 
-    public synchronized void onBucket(BucketHandler<UpdateBucket> bucketHandler) throws LeaderException {
-        if(this.state != LeaderState.INITIALIZED) throw new LeaderException("Can only change bucket listener before start sharing.");
+    public synchronized void onBucket(BucketHandler bucketHandler) throws LeaderException {
+        if(this.state != State.INITIALIZED) throw new LeaderException("Can only change bucket listener before start sharing.");
         this.bucketHandler = bucketHandler;
     }
 
-    public synchronized BaseBucket register(UUID member) throws LeaderException{
+    public synchronized void register(UUID member) throws LeaderException{
 
-        if (state != LeaderState.SHARING) throw new LeaderException("Can only add members when actively sharing data.");
+        if (state != State.SHARING) throw new LeaderException("Can only add members when actively sharing data.");
 
         if (!endpoints.containsKey(member)) {
             final LeaderEndpoint endpoint = new LeaderEndpoint(this.transformer);
             this.endpoints.put(member, endpoint);
 
-            return new BaseBucket(member, endpoint.getRemoteTime(), this.clock.getTime(), this.model.serialize());
+            BaseBucket base = new BaseBucket(member, endpoint.getRemoteTime(), this.clock.getTime(), this.model.serialize());
+            bucketHandler.handle(member, base);
         } else {
             throw new LeaderException("Member is already subscribed.");
         }
@@ -99,9 +96,13 @@ public class Leader {
         LeaderEndpoint endpoint = endpoints.remove(member);
     }
 
-    public synchronized void update(UpdateBucket bucket) throws LeaderException {
+    public synchronized void update(Bucket bucket) throws LeaderException {
 
-        if (state != LeaderState.SHARING) throw new LeaderException("Can only add members when actively sharing data.");
+        if(!(bucket instanceof UpdateBucket))
+            throw new LeaderException("Resetting full state from remote is not allowed.");
+
+        if (!State.SHARING.equals(state))
+            throw new LeaderException("Can only accept updates when actively sharing data.");
 
         LeaderEndpoint originEndpoint = endpoints.get(bucket.getMember());
 
@@ -110,7 +111,7 @@ public class Leader {
         }
 
         try {
-            bucket = originEndpoint.receive(bucket);
+            bucket = originEndpoint.receive((UpdateBucket)bucket);
 
             model.test(bucket.getOperations());
 
@@ -165,18 +166,26 @@ public class Leader {
     }
 
     /*
-     * Leader(transformer)
-     * setData(operations)
-     * getData
+     * # Leader(transformer)
+     * ## control
+     * load(operations, transformer, listener)
+     * read
+     * close
+     * register
+     * unregister
+     *
+     * ## link
      * onBucket((bucket)->{})
-     * add(member)
      * update(bucket)
-     * remove(member)
      *
      * TODO:
-     * - tidy up the interface chaos - separate concern on leader and member level (not endpoint)
-     * - add proper state management at Member and check thread safety
+     * - tidy up the interface chaos - separate concern on leader and member level (not endpoint) [mo noon]
      * - rename interface methods on endpoint and endpoint itself - think of name Leader and Member
+     * - code server controller [mo night]
+     * - refactor client code ... [tue]
+     * - write client controller [wed]
+     * - make client shippable through bower / git [thu]
+     * - create sparc binding an simple demo [fri]
      */
         
 }
