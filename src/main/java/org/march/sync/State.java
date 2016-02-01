@@ -6,7 +6,12 @@ package org.march.sync;
 public enum State {
 
     INITIALIZED,
+    READY,
     SHARING,
     TERMINATING,
     TERMINATED;
+
+    public static boolean isReceiving(State state){
+        return SHARING.equals(state) || TERMINATING.equals(state);
+    }
 }

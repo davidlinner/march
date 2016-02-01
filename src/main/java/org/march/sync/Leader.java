@@ -11,12 +11,15 @@ import org.march.data.ObjectException;
 import org.march.data.Operation;
 import org.march.data.command.Nil;
 import org.march.data.simple.SimpleModel;
+import org.march.sync.context.*;
 import org.march.sync.endpoint.*;
+import org.march.sync.leader.LeaderException;
+import org.march.sync.leader.OperationHandler;
 import org.march.sync.transform.Transformer;
 
 public class Leader {
     
-    private HashMap<UUID, LeaderEndpoint> endpoints;    
+    private HashMap<UUID, MemberContext> contexts;
    
     private Transformer transformer;
     
@@ -26,24 +29,27 @@ public class Leader {
 
     private OperationHandler operationHandler;
 
-    private BucketHandler bucketHandler;
+    private BucketListener bucketListener;
+
+    private BucketEndpoint bucketEndpoint;
 
     private State state = State.INITIALIZED;
 
-    public Leader(Transformer transformer){
-        this.endpoints      = new HashMap<UUID, LeaderEndpoint>();
+    public Leader(BucketEndpoint bucketEndpoint){
+        this.contexts       = new HashMap<UUID, MemberContext>();
         this.clock          = new Clock();
-        
-        this.transformer    = transformer;
         this.model          = new SimpleModel();
+
+        this.bucketEndpoint = bucketEndpoint;
 
     }
     
-    public synchronized void share(Operation [] operations, OperationHandler operationHandler) throws LeaderException {
+    public synchronized void share(Operation [] operations, Transformer transformer, OperationHandler operationHandler) throws LeaderException {
 
-        if (state != State.INITIALIZED)
+        if (!State.INITIALIZED.equals(state))
             throw new LeaderException("Cannot reset data once sharing was started.");
 
+        this.transformer    = transformer;
 
         this.operationHandler = operationHandler;
 
@@ -53,50 +59,62 @@ public class Leader {
             throw new LeaderException("Cannot load operations into a consistent state representation model.", e);
         }
 
-        state = State.SHARING;
+        this.bucketEndpoint.addReceiveListener(this.bucketListener = new BucketListener() {
+            @Override
+            public void deliver(UUID member, Bucket bucket) throws BucketDeliveryException {
+                try {
+                    Leader.this.update(bucket);
+                } catch (LeaderException e) {
+                    throw new BucketDeliveryException("Cannot deliver received bucket.", e);
+                }
+            }
+        });
 
+        state = State.SHARING;
     }
 
     public synchronized void unshare(){
         //todo: think of a graceful shutdown - this will kill locally comitted changes without saving them
-        for(UUID member: endpoints.keySet()){
+        for(UUID member: contexts.keySet()){
             unregister(member);
         }
 
-        state = State.TERMINATED;
+        this.bucketEndpoint.removeReceiveListener(this.bucketListener);
 
+        this.bucketListener = null;
         this.operationHandler = null;
+
+        state = State.TERMINATED;
     }
     
     public synchronized Operation[] read() {
         return this.model.serialize();
     }
 
-    public synchronized void onBucket(BucketHandler bucketHandler) throws LeaderException {
-        if(this.state != State.INITIALIZED) throw new LeaderException("Can only change bucket listener before start sharing.");
-        this.bucketHandler = bucketHandler;
-    }
-
     public synchronized void register(UUID member) throws LeaderException{
 
         if (state != State.SHARING) throw new LeaderException("Can only add members when actively sharing data.");
 
-        if (!endpoints.containsKey(member)) {
-            final LeaderEndpoint endpoint = new LeaderEndpoint(this.transformer);
-            this.endpoints.put(member, endpoint);
+        if (!contexts.containsKey(member)) {
+            final MemberContext endpoint = new MemberContext(this.transformer);
+            this.contexts.put(member, endpoint);
 
             BaseBucket base = new BaseBucket(member, endpoint.getRemoteTime(), this.clock.getTime(), this.model.serialize());
-            bucketHandler.handle(member, base);
+            try {
+                this.bucketEndpoint.deliver(member, base);
+            } catch (BucketDeliveryException e) {
+                throw new LeaderException("Cannot initialize new member.", e);
+            }
         } else {
             throw new LeaderException("Member is already subscribed.");
         }
     }
     
     public synchronized void unregister(UUID member){
-        LeaderEndpoint endpoint = endpoints.remove(member);
+        MemberContext endpoint = contexts.remove(member);
     }
 
-    public synchronized void update(Bucket bucket) throws LeaderException {
+    private synchronized void update(Bucket bucket) throws LeaderException {
 
         if(!(bucket instanceof UpdateBucket))
             throw new LeaderException("Resetting full state from remote is not allowed.");
@@ -104,14 +122,14 @@ public class Leader {
         if (!State.SHARING.equals(state))
             throw new LeaderException("Can only accept updates when actively sharing data.");
 
-        LeaderEndpoint originEndpoint = endpoints.get(bucket.getMember());
+        MemberContext originContext = contexts.get(bucket.getMember());
 
-        if (originEndpoint == null) {
+        if (originContext == null)
             throw new LeaderException(String.format("Member '%s' is unknown.", bucket.getMember()));
-        }
+
 
         try {
-            bucket = originEndpoint.receive((UpdateBucket)bucket);
+            bucket = originContext.adapt((UpdateBucket) bucket);
 
             model.test(bucket.getOperations());
 
@@ -125,7 +143,7 @@ public class Leader {
                 }
             }
 
-        } catch (EndpointException e) {
+        } catch (ContextException e) {
 
             unregister(bucket.getMember());
 
@@ -137,11 +155,11 @@ public class Leader {
             throw new LeaderException("Changes cannot be applied.", e);
         }
 
-        for (Map.Entry<UUID, LeaderEndpoint> entry: endpoints.entrySet()) {
+        for (Map.Entry<UUID, MemberContext> entry: contexts.entrySet()) {
             UUID member             = entry.getKey();
-            LeaderEndpoint endpoint = entry.getValue();
+            MemberContext context = entry.getValue();
 
-            if (endpoint != originEndpoint) {
+            if (context != originContext) {
                 // need a deep copy of operations since operations are mutable - prune Nil
                 LinkedList<Operation> operations = new LinkedList<Operation>();
                 for (Operation operation: bucket.getOperations()) {
@@ -149,17 +167,19 @@ public class Leader {
                 }
 
                 try {
-                    UpdateBucket update = endpoint.send(
-                                    new UpdateBucket(
-                                        bucket.getMember(),
-                                        endpoint.getRemoteTime(),
-                                        this.clock.getTime(),
-                                        operations.toArray(new Operation[operations.size()])));
+                    UpdateBucket update = new UpdateBucket(
+                            bucket.getMember(),
+                            context.getRemoteTime(),
+                            this.clock.getTime(),
+                            operations.toArray(new Operation[operations.size()]));
 
-                    bucketHandler.handle(member, update);
+                    context.include(update);
 
-                } catch (EndpointException e) {
+                    this.bucketEndpoint.deliver(member, update);
+
+                } catch (ContextException | BucketDeliveryException e) {
                     unregister(member);
+                    //todo: collect errors or log them
                 }
             }
         }
@@ -170,22 +190,29 @@ public class Leader {
      * ## control
      * load(operations, transformer, listener)
      * read
-     * close
+     * unload
      * register
      * unregister
      *
      * ## link
      * onBucket((bucket)->{})
-     * update(bucket)
+     * adapt(bucket)
      *
      * TODO:
-     * - tidy up the interface chaos - separate concern on leader and member level (not endpoint) [mo noon]
-     * - rename interface methods on endpoint and endpoint itself - think of name Leader and Member
+     * - rename interface methods on bucketEndpoint and bucketEndpoint itself - think of name Leader and Member
+     * - separate state enums for member and leader
      * - code server controller [mo night]
-     * - refactor client code ... [tue]
+
+
+
+     * - refactor client code ... deserialization??? [tue]
      * - write client controller [wed]
      * - make client shippable through bower / git [thu]
      * - create sparc binding an simple demo [fri]
+     *
+     * else:
+     * - make a multi module maven project
+     * - rename stuff and clear git history
      */
         
 }

@@ -11,8 +11,13 @@ import org.march.data.ObjectException;
 import org.march.data.Operation;
 import org.march.data.StringConstant;
 import org.march.data.command.Set;
-import org.march.sync.endpoint.EndpointException;
-import org.march.sync.endpoint.UpdateBucket;
+import org.march.sync.context.*;
+import org.march.sync.endpoint.Bucket;
+import org.march.sync.endpoint.BucketDeliveryException;
+import org.march.sync.endpoint.BucketEndpoint;
+import org.march.sync.endpoint.BucketListener;
+import org.march.sync.leader.LeaderException;
+import org.march.sync.member.MemberException;
 import org.march.sync.transform.Transformer;
 
 public class SynchronizationTest {
@@ -26,49 +31,61 @@ public class SynchronizationTest {
     private StringConstant a = new StringConstant("A");
     private StringConstant b = new StringConstant("B");
 
-    private BufferedBucketHandler downLink1;
-    private BufferedBucketHandler downLink2;
-    private BufferedBucketHandler upLink1;
-    private BufferedBucketHandler upLink2;
+    PipeBucketEndpoint client1, client2, server1, server2;
 
     static Transformer TRANSFORMER = new Transformer();
 
     @Before
-    public void setup() throws LeaderException, EndpointException, MemberException {
-        leader = new Leader( TRANSFORMER);
-        member1 = new Member(TRANSFORMER);
-        member2 = new Member(TRANSFORMER);
+    public void setup() throws LeaderException, ContextException, MemberException, BucketDeliveryException {
 
-        downLink1 = new BufferedBucketHandler((member, bucket)-> { try { member1.update(bucket); } catch (Throwable e) {}});
-        downLink2 = new BufferedBucketHandler((member, bucket)-> { try { member2.update(bucket); } catch (Throwable e) {}});
-        upLink1 = new BufferedBucketHandler((member,bucket) ->{
-            try {
-                leader.update(bucket);
-            } catch (LeaderException e) {
-                e.printStackTrace();
+        // fake network
+        server1 = new PipeBucketEndpoint();
+        server2 = new PipeBucketEndpoint();
+        client1 = new PipeBucketEndpoint();
+        client2 = new PipeBucketEndpoint();
+
+        server1.connect(client1);
+        client1.connect(server1);
+
+        server2.connect(client2);
+        client2.connect(server2);
+
+        // setup
+        leader = new Leader(new BucketEndpoint() {
+            // fake dispatcher
+
+            @Override
+            public void addReceiveListener(BucketListener handler) {
+                server1.addReceiveListener(handler);
+                server2.addReceiveListener(handler);
+            }
+
+            @Override
+            public void removeReceiveListener(BucketListener handler) {
+                server1.removeReceiveListener(handler);
+                server2.removeReceiveListener(handler);
+            }
+
+            @Override
+            public void deliver(UUID member, Bucket bucket) throws BucketDeliveryException {
+                if(name1.equals(member))
+                    server1.deliver(member, bucket);
+                else
+                    server2.deliver(member, bucket);
             }
         });
-        upLink2 = new BufferedBucketHandler((member,bucket)->{
-            try {
-                leader.update(bucket);
-            } catch (LeaderException e) {
-                e.printStackTrace();
-            }
-        });
 
-        leader.onBucket((member, bucket)->{
-            if (member.equals(name1)){
-                downLink1.handle(member, bucket);
-            } else if (member.equals(name2)){
-                downLink2.handle(member, bucket);
-            }
-        });
+        member1 = new Member(client1);
+        member2 = new Member(client2);
 
-        member1.onBucket(upLink1);
-        member2.onBucket(upLink2);
 
-        leader.share(new Operation[0], (operation) -> {});
+        // initialize
+        leader.share(new Operation[0], TRANSFORMER, null);
 
+        member1.open(TRANSFORMER);
+        member2.open(TRANSFORMER);
+
+        // join
         leader.register(name1);
         leader.register(name2);
 
@@ -76,15 +93,15 @@ public class SynchronizationTest {
     }
 
 
-    private void flushAll(){
-        upLink1.flush();
-        upLink2.flush();
-        downLink1.flush();
-        downLink2.flush();
+    private void flushAll() throws BucketDeliveryException {
+        client1.flush();
+        client2.flush();
+        server1.flush();
+        server2.flush();
     };
 
     @Test
-    public void testOneWaySynchronization() throws EndpointException, MemberException, ObjectException, CommandException {
+    public void testOneWaySynchronization() throws ContextException, MemberException, ObjectException, CommandException, BucketDeliveryException {
         member1.apply(null, new Set("a", a));
 
         flushAll();
@@ -93,7 +110,7 @@ public class SynchronizationTest {
     }
 
     @Test
-    public void testTwoWaySynchronizationNoConflict() throws EndpointException, MemberException, ObjectException, CommandException {
+    public void testTwoWaySynchronizationNoConflict() throws ContextException, MemberException, ObjectException, CommandException, BucketDeliveryException {
         member1.apply(null, new Set("a", a));
         member2.apply(null, new Set("b", b));
 
@@ -104,7 +121,7 @@ public class SynchronizationTest {
     }
 
     @Test
-    public void testTwoWaySynchronizationOnConflict() throws EndpointException, MemberException, ObjectException, CommandException {
+    public void testTwoWaySynchronizationOnConflict() throws ContextException, MemberException, ObjectException, CommandException, BucketDeliveryException {
         member1.apply(null, new Set("a", a));
         member2.apply(null, new Set("a", b));
 

@@ -39,10 +39,10 @@ public class Server {
 //		this.messageHandler = messageHandler;
 //	}
 //
-//	public void receive(Message message) throws ServerException{
+//	public void adapt(Message message) throws ServerException{
 //		if(message instanceof DataMessage){
 //			DataMessage dataMessage = (DataMessage)message;
-//			process(dataMessage.getScope(), dataMessage.getBucket());
+//			deliver(dataMessage.getScope(), dataMessage.getBucket());
 //		} else if(message instanceof OpenMessage){
 //			OpenMessage openMessage = (OpenMessage)message;
 //			open(openMessage.getScope(), openMessage.getMember());
@@ -82,11 +82,11 @@ public class Server {
 //
 //		OutboundEndpoint endpoint = leader.getOutbound(member);
 //
-//		endpoint.connectOutbound(new BucketHandler() {
+//		endpoint.connectOutbound(new BucketListener() {
 //
 //			@Override
-//			public void handle(Bucket bucket) {
-//				//Server.this.messageHandler.send
+//			public void deliver(Bucket bucket) {
+//				//Server.this.messageHandler.include
 //
 //			}
 //		});
@@ -99,14 +99,14 @@ public class Server {
 //
 //	}
 //
-//	private void process(String scope, Bucket bucket){
+//	private void deliver(String scope, Bucket bucket){
 //
 //	}
 	
 	/*
 	 * create(member, scope):session
 	 * session.open((bucket) -> {})
-	 * session.update(bucket)
+	 * session.adapt(bucket)
 	 * session.close()
 	 *  
 	 * 

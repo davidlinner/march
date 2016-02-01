@@ -13,7 +13,9 @@ import org.march.data.ObjectException;
 import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.simple.SimpleModel;
+import org.march.sync.context.*;
 import org.march.sync.endpoint.*;
+import org.march.sync.member.*;
 import org.march.sync.transform.Transformer;
 
 
@@ -23,23 +25,46 @@ public class Member {
 
     private Clock clock;
 
-    private MemberEndpoint channel;
+    private LeaderContext context;
 
     private Model model;
 
     private HashSet<Listener> listeners = new HashSet<Listener>();
 
-    private BucketHandler bucketHandler;
+    private BucketListener bucketListener;
 
     private State state = State.INITIALIZED;
 
+    private BucketEndpoint bucketEndpoint;
+
     private final static EnumSet<State> ACCEPT_UPDATES = EnumSet.of(State.SHARING,State.TERMINATING);
 
-    public Member(Transformer transformer){
-        clock   = new Clock();
-        channel = new MemberEndpoint(transformer);
+    public Member(BucketEndpoint bucketEndpoint){
+        this.clock  = new Clock();
+        this.bucketEndpoint = bucketEndpoint;
+    }
 
-        model   = new SimpleModel();
+    public synchronized void open(Transformer transformer) throws MemberException {
+
+        if(!State.INITIALIZED.equals(state)) throw new MemberException("Already opened.");
+
+        this.context = new LeaderContext(transformer);
+        this.model   = new SimpleModel();
+
+        bucketEndpoint.addReceiveListener(this.bucketListener = new BucketListener() {
+            @Override
+            public void deliver(UUID member, Bucket bucket) throws BucketDeliveryException {
+
+                if(!(member.equals(name) || bucket instanceof BaseBucket)) throw new BucketDeliveryException("Not the right receiver.");
+                try {
+                    Member.this.update(bucket);
+                } catch (MemberException e) {
+                    throw new BucketDeliveryException("Cannot deliver received bucket.", e);
+                }
+            }
+        });
+
+        this.state = State.READY;
     }
 
     public synchronized void close(){
@@ -49,12 +74,14 @@ public class Member {
             if(listener instanceof CloseListener) ((CloseListener) listener).closed(this);
         }
 
+        this.bucketEndpoint.removeReceiveListener(this.bucketListener);
+        this.bucketListener = null;
     }
 
-    public void onBucket(BucketHandler bucketHandler) throws MemberException {
-        if(!State.INITIALIZED.equals(state)) throw new MemberException("Can only set bucket handler when sharing was not yet started.");
-        this.bucketHandler = bucketHandler;
-    }
+//    public void onBucket(BucketListener bucketListener) throws MemberException {
+//        if(!State.INITIALIZED.equals(state)) throw new MemberException("Can only set bucket handler when sharing was not yet started.");
+//        this.bucketListener = bucketListener;
+//    }
 
     public synchronized void apply(Pointer pointer, Command command) throws MemberException{
         if(!State.SHARING.equals(state)) throw new MemberException("Can only change data when sharing.");
@@ -62,28 +89,31 @@ public class Member {
         try {
             model.apply(pointer, command);
 
-            UpdateBucket bucket = new UpdateBucket(this.name, clock.tick(), channel.getRemoteTime(),
+            UpdateBucket bucket = new UpdateBucket(this.name, clock.tick(), context.getRemoteTime(),
                     new Operation[]{new Operation(pointer, command)});
 
-            bucket = channel.send(bucket);
+            context.include(bucket);
 
-            this.bucketHandler.handle(null, bucket);
-        } catch (EndpointException e) {
+            //this.bucketListener.deliver(null, bucket);
+            this.bucketEndpoint.deliver(this.name, bucket);
+        } catch (ContextException e) {
             throw new MemberException(e);
         } catch (ObjectException|CommandException e){
             throw new MemberException(e);
+        } catch (BucketDeliveryException e) {
+            throw new MemberException("Cannot commit changes.", e);
         }
     }
 
-    public synchronized void update(Bucket bucket) throws MemberException {
+    private synchronized void update(Bucket bucket) throws MemberException {
 
         if(bucket instanceof BaseBucket){
-            if (!State.INITIALIZED.equals(state)) throw new MemberException("Already initialized. Cannot reset data.");
+            if (!State.READY.equals(state)) throw new MemberException("Cannot set data. Member is not ready yet or already closed.");
 
             try {
                 name = bucket.getMember();
                 model.apply(bucket.getOperations());
-                channel.setRemoteTime(bucket.getLeaderTime());
+                context.setRemoteTime(bucket.getLeaderTime());
                 clock.setTime(bucket.getMemberTime());
             } catch (ObjectException | CommandException e) {
                 throw new MemberException("Cannot initialize member.", e);
@@ -99,7 +129,7 @@ public class Member {
             if (!ACCEPT_UPDATES.contains(state)) throw new MemberException("Can only accept updates when sharing data or terminating.");
 
             try {
-                bucket = channel.receive((UpdateBucket)bucket);
+                bucket = this.context.adapt((UpdateBucket) bucket);
 
                 model.apply(bucket.getOperations());
 
@@ -108,7 +138,7 @@ public class Member {
                 }
 
 
-                if(State.TERMINATING.equals(state) && channel.isEmpty()){
+                if(State.TERMINATING.equals(state) && context.isEmpty()){
                     //out buffer is empty, a buckets have been confirmed by server
                     state = State.TERMINATED;
 
@@ -119,7 +149,7 @@ public class Member {
 
             } catch (ObjectException | CommandException e) {
                 throw new MemberException("Cannot apply changes to state consistently.", e);
-            } catch (EndpointException e) {
+            } catch (ContextException e) {
                 throw new MemberException("Failed to contextualize bucket.", e);
             }
         }
