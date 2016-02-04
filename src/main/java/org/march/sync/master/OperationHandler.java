@@ -1,4 +1,4 @@
-package org.march.sync.leader;
+package org.march.sync.master;
 
 import org.march.data.Operation;
 

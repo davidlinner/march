@@ -3,28 +3,27 @@ package org.march.sync.context;
 import java.util.LinkedList;
 
 import org.march.sync.Clock;
-import org.march.sync.endpoint.Bucket;
-import org.march.sync.endpoint.UpdateBucket;
+import org.march.sync.channel.ChangeSet;
 import org.march.sync.transform.Transformer;
 
 
 // TODO: add member uuid as field and check member of message against this field on reception 
-public abstract class Context {
+public abstract class Backlog {
 
 	private Transformer transformer;
 	private int remoteTime;
 
-	private LinkedList<UpdateBucket> queue;
+	private LinkedList<ChangeSet> queue;
 
-	public Context(Transformer transformer) {
+	public Backlog(Transformer transformer) {
 		this.transformer = transformer;
 
 		this.remoteTime = 0;
 
-		this.queue = new LinkedList<UpdateBucket>();
+		this.queue = new LinkedList<>();
 	}
 
-	public UpdateBucket adapt(UpdateBucket bucket) throws ContextException {
+	public ChangeSet update(ChangeSet bucket) throws BacklogException {
 
 		// remove messages member has seen already
 		try {
@@ -35,11 +34,11 @@ public abstract class Context {
 			}
 
 			// harmonize remaining messages in buffer and new message at once
-			for (Bucket enqueued : queue) {
+			for (ChangeSet enqueued : queue) {
 				transformer
 						.transform(bucket.getOperations(), enqueued
-								.getOperations(), bucket.getMember()
-								.compareTo(enqueued.getMember()) > 0);
+								.getOperations(), bucket.getReplicaName()
+								.compareTo(enqueued.getReplicaName()) > 0);
 
 				// adjust times
 				setRemoteTime(enqueued, getRemoteTime(bucket));
@@ -53,13 +52,13 @@ public abstract class Context {
 			return bucket;
 
 		} catch (Exception e) {
-			throw new ContextException(e);
+			throw new BacklogException(e);
 		}
 	}
 
-	public void include(UpdateBucket bucket) throws ContextException {
+	public void append(ChangeSet bucket) throws BacklogException {
 		if (getRemoteTime(bucket) != this.remoteTime) {
-			throw new ContextException("Message is out of synchronization.");
+			throw new BacklogException("Message is out of synchronization.");
 		}
 
 		queue.offer(bucket.clone());
@@ -77,12 +76,12 @@ public abstract class Context {
 		this.remoteTime = remoteTime;
 	}
 
-	protected abstract int getLocalTime(Bucket bucket);
+	protected abstract int getLocalTime(ChangeSet changeSet);
 
-	protected abstract void setLocalTime(Bucket bucket, int time);
+	protected abstract void setLocalTime(ChangeSet changeSet, int time);
 
-	protected abstract int getRemoteTime(Bucket bucket);
+	protected abstract int getRemoteTime(ChangeSet changeSet);
 
-	protected abstract void setRemoteTime(Bucket bucket, int time);
+	protected abstract void setRemoteTime(ChangeSet changeSet, int time);
 
 }

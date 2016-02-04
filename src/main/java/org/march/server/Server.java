@@ -10,7 +10,7 @@ public class Server {
 //
 //	private Transformer transformer;
 //
-//	private HashMap<String, Leader> leaders = new HashMap<String, Leader>();
+//	private HashMap<String, Master> leaders = new HashMap<String, Master>();
 //
 //	public Server(){
 //	}
@@ -39,16 +39,16 @@ public class Server {
 //		this.messageHandler = messageHandler;
 //	}
 //
-//	public void adapt(Message message) throws ServerException{
+//	public void update(Message message) throws ServerException{
 //		if(message instanceof DataMessage){
 //			DataMessage dataMessage = (DataMessage)message;
-//			deliver(dataMessage.getScope(), dataMessage.getBucket());
+//			send(dataMessage.getScope(), dataMessage.getChangeSet());
 //		} else if(message instanceof OpenMessage){
 //			OpenMessage openMessage = (OpenMessage)message;
-//			open(openMessage.getScope(), openMessage.getMember());
+//			open(openMessage.getScope(), openMessage.getReplicaName());
 //		} else if(message instanceof CloseMessage){
 //			CloseMessage closeMessage = (CloseMessage)message;
-//			close(closeMessage.getScope(), closeMessage.getMember());
+//			close(closeMessage.getScope(), closeMessage.getReplicaName());
 //		} else {
 //			//TODO: throw unknown message exception
 //		}
@@ -56,17 +56,17 @@ public class Server {
 //
 //	private void open(String scope, UUID member) throws ServerException {
 //
-//		Leader leader = null;
+//		Master leader = null;
 //		synchronized(leaders){
 //			leader = leaders.get(scope);
 //			if(leader == null){
 //
-//				leader = new Leader(this.transformer);
+//				leader = new Master(this.transformer);
 //
 //				try {
 //					//FIXME: this might be an expensive operation, a loader pool and a future-based solution could be a better solution here
 //					leader.setData(this.dataConnector.read(scope));
-//				} catch (ObjectException | CommandException | LeaderException e) {
+//				} catch (ObjectException | CommandException | MasterException e) {
 //					throw new ServerException(String.format("Cannot initiate scope '%s'.", scope), e);
 //				}
 //
@@ -76,17 +76,17 @@ public class Server {
 //
 //		try {
 //			leader.register(member);
-//		} catch (LeaderException e) {
+//		} catch (MasterException e) {
 //			throw new ServerException(e);
 //		}
 //
 //		OutboundEndpoint endpoint = leader.getOutbound(member);
 //
-//		endpoint.connectOutbound(new BucketListener() {
+//		endpoint.connectOutbound(new ChannelListener() {
 //
 //			@Override
-//			public void deliver(Bucket bucket) {
-//				//Server.this.messageHandler.include
+//			public void send(ChangeSet bucket) {
+//				//Server.this.messageHandler.append
 //
 //			}
 //		});
@@ -99,14 +99,14 @@ public class Server {
 //
 //	}
 //
-//	private void deliver(String scope, Bucket bucket){
+//	private void send(String scope, ChangeSet bucket){
 //
 //	}
 	
 	/*
 	 * create(member, scope):session
 	 * session.open((bucket) -> {})
-	 * session.adapt(bucket)
+	 * session.update(bucket)
 	 * session.close()
 	 *  
 	 * 

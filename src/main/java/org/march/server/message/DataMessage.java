@@ -1,26 +1,26 @@
 package org.march.server.message;
 
-import org.march.sync.endpoint.Bucket;
+import org.march.sync.channel.ChangeSet;
 
 public class DataMessage extends Message {
 
-	private Bucket bucket;
+	private ChangeSet changeSet;
 	
 	public DataMessage() {
 	}
 
-	public DataMessage(String scope, Bucket bucket) {
+	public DataMessage(String scope, ChangeSet changeSet) {
 		super(scope);
 
-		this.bucket = bucket;
+		this.changeSet = changeSet;
 	}
 
-	public Bucket getBucket() {
-		return bucket;
+	public ChangeSet getChangeSet() {
+		return changeSet;
 	}
 
-	public void setBucket(Bucket bucket) {
-		this.bucket = bucket;
+	public void setChangeSet(ChangeSet changeSet) {
+		this.changeSet = changeSet;
 	}
 	
 }

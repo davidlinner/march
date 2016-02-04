@@ -1,4 +1,4 @@
-package org.march.sync.member;
+package org.march.sync.replica;
 
 /**
  * Created by dli on 31.01.2016.

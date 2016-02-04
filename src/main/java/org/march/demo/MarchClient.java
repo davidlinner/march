@@ -28,7 +28,7 @@ public class MarchClient {
 //            UUID id = UUID.randomUUID();
 //
 //
-//            Member member = new Member(id, new Transformer());
+//            Replica member = new Replica(id, new Transformer());
 //
 //            final OutboundEndpoint channel = member.getOutbound();
 //
@@ -98,7 +98,7 @@ public class MarchClient {
 //                        } else {
 //                            member.apply(pointer, new Insert(Integer.parseInt(identifier), data));
 //                        }
-//                    } catch (MemberException e) {
+//                    } catch (ReplicaException e) {
 //                        e.printStackTrace();
 //                        break;
 //                    }
@@ -116,7 +116,7 @@ public class MarchClient {
 //                            member.apply(pointer, new Construct(Type.HASH));
 //                            System.out.println("Created hash at local address: " + addresses.indexOf(pointer));
 //                        }
-//                    } catch (MemberException e) {
+//                    } catch (ReplicaException e) {
 //                        e.printStackTrace();
 //                        break;
 //                    }

@@ -1,33 +1,33 @@
-package org.march.sync.member;
+package org.march.sync.replica;
 
-public class MemberException extends Exception {
+public class ReplicaException extends Exception {
 
     /**
      * 
      */
     private static final long serialVersionUID = 1719035802754184690L;
 
-    public MemberException() {
+    public ReplicaException() {
         // TODO Auto-generated constructor stub
     }
 
-    public MemberException(String message) {
+    public ReplicaException(String message) {
         super(message);
         // TODO Auto-generated constructor stub
     }
 
-    public MemberException(Throwable cause) {
+    public ReplicaException(Throwable cause) {
         super(cause);
         // TODO Auto-generated constructor stub
     }
 
-    public MemberException(String message, Throwable cause) {
+    public ReplicaException(String message, Throwable cause) {
         super(message, cause);
         // TODO Auto-generated constructor stub
     }
 
-    public MemberException(String message, Throwable cause,
-            boolean enableSuppression, boolean writableStackTrace) {
+    public ReplicaException(String message, Throwable cause,
+                            boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
         // TODO Auto-generated constructor stub
     }

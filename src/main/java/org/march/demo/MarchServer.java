@@ -4,13 +4,13 @@ public class MarchServer {
 
 //    private ServerSocket serverSocket;
 //
-//    private Leader leader;
+//    private Master leader;
 //
 //    public MarchServer(int port) throws IOException {
 //        serverSocket = new ServerSocket(port);
 //        serverSocket.setSoTimeout(120000);
 //
-//        leader = new Leader(new Transformer());
+//        leader = new Master(new Transformer());
 //    }
 //
 //    public void run() {
@@ -45,7 +45,7 @@ public class MarchServer {
 //            } catch (ClassNotFoundException e) {
 //                e.printStackTrace();
 //                break;
-//            } catch (LeaderException e) {
+//            } catch (MasterException e) {
 //				e.printStackTrace();
 //				break;
 //			}

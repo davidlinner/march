@@ -10,13 +10,13 @@ import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.StringConstant;
 import org.march.data.command.Insert;
-import org.march.sync.context.ContextException;
-import org.march.sync.context.LeaderContext;
-import org.march.sync.endpoint.UpdateBucket;
+import org.march.sync.channel.ChangeSet;
+import org.march.sync.context.BacklogException;
+import org.march.sync.context.MasterBacklog;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
 
-public class LeaderContextTest {
+public class MasterBacklogTest {
 
     private UUID member0 = UUID.fromString("00000000-0000-0000-0000-000000000000");
     private UUID member1 = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -43,51 +43,51 @@ public class LeaderContextTest {
         TRANSFORMER.addInclusion(new InsertInsertInclusion());
     }
 
-    private LeaderContext context;
+    private MasterBacklog context;
 
 
     @Before
-    public void setupContext() throws ContextException {
-        context = new LeaderContext(TRANSFORMER);
+    public void setupContext() throws BacklogException {
+        context = new MasterBacklog(TRANSFORMER);
     }
 
     @Test
-    public void testLeaderContextSend() throws ContextException {
+    public void testLeaderContextSend() throws BacklogException {
 
         Clock clk = new Clock();
 
         Operation[] ol0 = new Operation[]{a0, b0},
                     ol1 = new Operation[]{c0, d0};
 
-        UpdateBucket m0 = new UpdateBucket(member0, clk.tick(), 0, ol0);
-        UpdateBucket m1 = new UpdateBucket(member0, clk.tick(), 0, ol1);
+        ChangeSet m0 = new ChangeSet(member0, clk.tick(), 0, ol0);
+        ChangeSet m1 = new ChangeSet(member0, clk.tick(), 0, ol1);
 
-        context.include(m0);
-        context.include(m1);
+        context.append(m0);
+        context.append(m1);
 
         assertEquals(context.getRemoteTime(), 0);
     }
 
     @Test
-    public void testLeaderContextReceive() throws ContextException {
+    public void testLeaderContextReceive() throws BacklogException {
 
         Clock clk = new Clock();
 
         Operation[] ol0 = new Operation[]{a0, b0},
                     ol1 = new Operation[]{c0, d0};
 
-        UpdateBucket m0 = new UpdateBucket(member0, 0, clk.tick(), ol0);
-        UpdateBucket m1 = new UpdateBucket(member0, 0, clk.tick(), ol1);
+        ChangeSet m0 = new ChangeSet(member0, 0, clk.tick(), ol0);
+        ChangeSet m1 = new ChangeSet(member0, 0, clk.tick(), ol1);
 
-        context.adapt(m0);
-        context.adapt(m1);
+        context.update(m0);
+        context.update(m1);
 
         assertEquals(context.getRemoteTime(), 2);
 
     }
 
     @Test
-    public void testLeaderContextSynchronizationOnContextInequivalence() throws ContextException {
+    public void testLeaderContextSynchronizationOnContextInequivalence() throws BacklogException {
 
         Clock cm = new Clock();
         Clock cl = new Clock();
@@ -95,29 +95,29 @@ public class LeaderContextTest {
         Operation[] ol0 = new Operation[]{a0, b0},
                     ol1 = new Operation[]{c0, d0};
 
-        UpdateBucket mm = new UpdateBucket(member0, cm.tick(), 0, ol0);
-        UpdateBucket ml = new UpdateBucket(member1, 0, cl.tick(), ol1);
+        ChangeSet mm = new ChangeSet(member0, cm.tick(), 0, ol0);
+        ChangeSet ml = new ChangeSet(member1, 0, cl.tick(), ol1);
 
-        context.include(mm);
-        ml = context.adapt(ml);
+        context.append(mm);
+        ml = context.update(ml);
 
         assertEquals(c2, ml.getOperations()[0]);
         assertEquals(d2, ml.getOperations()[1]);
     }
 
     @Test
-    public void testLeaderContextSynchronizationOnContextEquivalence() throws ContextException {
+    public void testLeaderContextSynchronizationOnContextEquivalence() throws BacklogException {
         Clock cm = new Clock();
         Clock cl = new Clock();
 
         Operation[] ol0 = new Operation[]{a0, b0},
                     ol1 = new Operation[]{c0, d0};
 
-        UpdateBucket ml = new UpdateBucket(member0, cm.tick(), 0, ol0);
-        UpdateBucket mm = new UpdateBucket(member1, cm.getTime(), cl.tick(), ol1);
+        ChangeSet ml = new ChangeSet(member0, cm.tick(), 0, ol0);
+        ChangeSet mm = new ChangeSet(member1, cm.getTime(), cl.tick(), ol1);
 
-        context.include(ml);
-        mm = context.adapt(mm);
+        context.append(ml);
+        mm = context.update(mm);
 
         assertEquals(c0, mm.getOperations()[0]);
         assertEquals(d0, mm.getOperations()[1]);

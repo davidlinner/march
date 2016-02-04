@@ -10,13 +10,13 @@ import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.StringConstant;
 import org.march.data.command.Insert;
-import org.march.sync.context.ContextException;
-import org.march.sync.context.MemberContext;
-import org.march.sync.endpoint.UpdateBucket;
+import org.march.sync.channel.ChangeSet;
+import org.march.sync.context.BacklogException;
+import org.march.sync.context.ReplicaBacklog;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
 
-public class MemberContextTest {
+public class ReplicaBacklogTest {
 
     private UUID member0 = UUID.fromString("00000000-0000-0000-0000-000000000000");
     private UUID member1 = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -43,27 +43,27 @@ public class MemberContextTest {
         TRANSFORMER.addInclusion(new InsertInsertInclusion());
     }
         
-    private MemberContext context;
+    private ReplicaBacklog context;
 
     
     @Before
-    public void setupContext() throws ContextException {
-        context = new MemberContext(TRANSFORMER);
+    public void setupContext() throws BacklogException {
+        context = new ReplicaBacklog(TRANSFORMER);
     }
     
     @Test
-    public void testMemberContextSend() throws ContextException {
+    public void testMemberContextSend() throws BacklogException {
         
         Clock clk = new Clock();
         
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        UpdateBucket m0 = new UpdateBucket(member0, 0, clk.tick(), ol0);
-        UpdateBucket m1 = new UpdateBucket(member0, 0, clk.tick(), ol1);
+        ChangeSet m0 = new ChangeSet(member0, 0, clk.tick(), ol0);
+        ChangeSet m1 = new ChangeSet(member0, 0, clk.tick(), ol1);
         
-        context.include(m0);
-        context.include(m1);
+        context.append(m0);
+        context.append(m1);
         
         //assertEquals(outboundBuffer.size(), 2);
         assertEquals(context.getRemoteTime(), 0);
@@ -71,25 +71,25 @@ public class MemberContextTest {
     
     
     @Test
-    public void testMemberContextReceive() throws ContextException {
+    public void testMemberContextReceive() throws BacklogException {
         
         Clock clk = new Clock();
               
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0}; 
               
-        UpdateBucket m0 = new UpdateBucket(member0, clk.tick(), 0, ol0);
-        UpdateBucket m1 = new UpdateBucket(member0, clk.tick(), 0, ol1);
+        ChangeSet m0 = new ChangeSet(member0, clk.tick(), 0, ol0);
+        ChangeSet m1 = new ChangeSet(member0, clk.tick(), 0, ol1);
         
-        context.adapt(m0);
-        context.adapt(m1);
+        context.update(m0);
+        context.update(m1);
         
         assertEquals(context.getRemoteTime(), 2);
                     
     }
         
     @Test
-    public void testMemberContextSynchronizationOnContextInequivalence() throws ContextException {
+    public void testMemberContextSynchronizationOnContextInequivalence() throws BacklogException {
         
         Clock cl = new Clock();
         Clock cm = new Clock();       
@@ -97,29 +97,29 @@ public class MemberContextTest {
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0};
 
-        UpdateBucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
-        UpdateBucket mm = new UpdateBucket(member1, cm.tick(), 0, ol1);
+        ChangeSet ml = new ChangeSet(member0, 0, cl.tick(), ol0);
+        ChangeSet mm = new ChangeSet(member1, cm.tick(), 0, ol1);
         
-        context.include(ml);
-        mm = context.adapt(mm);
+        context.append(ml);
+        mm = context.update(mm);
 
         assertEquals(c2, mm.getOperations()[0]);
         assertEquals(d2, mm.getOperations()[1]);
     }
     
     @Test
-    public void testMemberContextSynchronizationOnContextEquivalence() throws ContextException {
+    public void testMemberContextSynchronizationOnContextEquivalence() throws BacklogException {
         Clock cl = new Clock();
         Clock cm = new Clock();        
                
         Operation[] ol0 = new Operation[]{a0, b0}, 
                     ol1 = new Operation[]{c0, d0};
 
-        UpdateBucket ml = new UpdateBucket(member0, 0, cl.tick(), ol0);
-        UpdateBucket mm = new UpdateBucket(member1, cm.tick(), cl.getTime(), ol1);
+        ChangeSet ml = new ChangeSet(member0, 0, cl.tick(), ol0);
+        ChangeSet mm = new ChangeSet(member1, cm.tick(), cl.getTime(), ol1);
         
-        context.include(ml);
-        mm = context.adapt(mm);
+        context.append(ml);
+        mm = context.update(mm);
         
         assertEquals(c0,mm.getOperations()[0]);
         assertEquals(d0,mm.getOperations()[1]);
