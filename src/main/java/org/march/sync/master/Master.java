@@ -109,6 +109,7 @@ public class Master {
     }
     
     public synchronized void unregister(UUID member){
+        //todo: graceful shutdown - signalize quiscence??
         ReplicaBacklog endpoint = backlogs.remove(member);
     }
 

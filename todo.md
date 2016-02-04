@@ -61,3 +61,8 @@
 tbd.
 plugin for common java and js mvc frameworks (spring, backbone, angular, ember)?
 think of persistence in key-value store (cassandra, redis)
+
+- server controller
+- client refactoring
+- client controller
+- sparc binding server

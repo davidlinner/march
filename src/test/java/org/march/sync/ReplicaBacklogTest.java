@@ -43,16 +43,16 @@ public class ReplicaBacklogTest {
         TRANSFORMER.addInclusion(new InsertInsertInclusion());
     }
         
-    private ReplicaBacklog context;
+    private ReplicaBacklog replicaBacklog;
 
     
     @Before
     public void setupContext() throws BacklogException {
-        context = new ReplicaBacklog(TRANSFORMER);
+        replicaBacklog = new ReplicaBacklog(TRANSFORMER);
     }
     
     @Test
-    public void testMemberContextSend() throws BacklogException {
+    public void testReplicaBacklogSend() throws BacklogException {
         
         Clock clk = new Clock();
         
@@ -62,16 +62,16 @@ public class ReplicaBacklogTest {
         ChangeSet m0 = new ChangeSet(member0, 0, clk.tick(), ol0);
         ChangeSet m1 = new ChangeSet(member0, 0, clk.tick(), ol1);
         
-        context.append(m0);
-        context.append(m1);
+        replicaBacklog.append(m0);
+        replicaBacklog.append(m1);
         
         //assertEquals(outboundBuffer.size(), 2);
-        assertEquals(context.getRemoteTime(), 0);
+        assertEquals(replicaBacklog.getRemoteTime(), 0);
     } 
     
     
     @Test
-    public void testMemberContextReceive() throws BacklogException {
+    public void testReplicaBacklogReceive() throws BacklogException {
         
         Clock clk = new Clock();
               
@@ -81,15 +81,15 @@ public class ReplicaBacklogTest {
         ChangeSet m0 = new ChangeSet(member0, clk.tick(), 0, ol0);
         ChangeSet m1 = new ChangeSet(member0, clk.tick(), 0, ol1);
         
-        context.update(m0);
-        context.update(m1);
+        replicaBacklog.update(m0);
+        replicaBacklog.update(m1);
         
-        assertEquals(context.getRemoteTime(), 2);
+        assertEquals(replicaBacklog.getRemoteTime(), 2);
                     
     }
         
     @Test
-    public void testMemberContextSynchronizationOnContextInequivalence() throws BacklogException {
+    public void testReplicaBacklogSynchronizationOnContextInequivalence() throws BacklogException {
         
         Clock cl = new Clock();
         Clock cm = new Clock();       
@@ -100,15 +100,15 @@ public class ReplicaBacklogTest {
         ChangeSet ml = new ChangeSet(member0, 0, cl.tick(), ol0);
         ChangeSet mm = new ChangeSet(member1, cm.tick(), 0, ol1);
         
-        context.append(ml);
-        mm = context.update(mm);
+        replicaBacklog.append(ml);
+        mm = replicaBacklog.update(mm);
 
         assertEquals(c2, mm.getOperations()[0]);
         assertEquals(d2, mm.getOperations()[1]);
     }
     
     @Test
-    public void testMemberContextSynchronizationOnContextEquivalence() throws BacklogException {
+    public void testReplicaBacklogSynchronizationOnContextEquivalence() throws BacklogException {
         Clock cl = new Clock();
         Clock cm = new Clock();        
                
@@ -118,8 +118,8 @@ public class ReplicaBacklogTest {
         ChangeSet ml = new ChangeSet(member0, 0, cl.tick(), ol0);
         ChangeSet mm = new ChangeSet(member1, cm.tick(), cl.getTime(), ol1);
         
-        context.append(ml);
-        mm = context.update(mm);
+        replicaBacklog.append(ml);
+        mm = replicaBacklog.update(mm);
         
         assertEquals(c0,mm.getOperations()[0]);
         assertEquals(d0,mm.getOperations()[1]);

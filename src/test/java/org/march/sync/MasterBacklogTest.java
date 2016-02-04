@@ -18,8 +18,8 @@ import org.march.sync.transform.Transformer;
 
 public class MasterBacklogTest {
 
-    private UUID member0 = UUID.fromString("00000000-0000-0000-0000-000000000000");
-    private UUID member1 = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private UUID replicaName0 = UUID.fromString("00000000-0000-0000-0000-000000000000");
+    private UUID replicaName1 = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     private Pointer p = new Pointer(UUID.randomUUID());
 
@@ -43,51 +43,51 @@ public class MasterBacklogTest {
         TRANSFORMER.addInclusion(new InsertInsertInclusion());
     }
 
-    private MasterBacklog context;
+    private MasterBacklog masterBacklog;
 
 
     @Before
     public void setupContext() throws BacklogException {
-        context = new MasterBacklog(TRANSFORMER);
+        masterBacklog = new MasterBacklog(TRANSFORMER);
     }
 
     @Test
-    public void testLeaderContextSend() throws BacklogException {
+    public void testMasterBacklogSend() throws BacklogException {
 
         Clock clk = new Clock();
 
         Operation[] ol0 = new Operation[]{a0, b0},
                     ol1 = new Operation[]{c0, d0};
 
-        ChangeSet m0 = new ChangeSet(member0, clk.tick(), 0, ol0);
-        ChangeSet m1 = new ChangeSet(member0, clk.tick(), 0, ol1);
+        ChangeSet m0 = new ChangeSet(replicaName0, clk.tick(), 0, ol0);
+        ChangeSet m1 = new ChangeSet(replicaName0, clk.tick(), 0, ol1);
 
-        context.append(m0);
-        context.append(m1);
+        masterBacklog.append(m0);
+        masterBacklog.append(m1);
 
-        assertEquals(context.getRemoteTime(), 0);
+        assertEquals(masterBacklog.getRemoteTime(), 0);
     }
 
     @Test
-    public void testLeaderContextReceive() throws BacklogException {
+    public void testMasterBacklogReceive() throws BacklogException {
 
         Clock clk = new Clock();
 
         Operation[] ol0 = new Operation[]{a0, b0},
                     ol1 = new Operation[]{c0, d0};
 
-        ChangeSet m0 = new ChangeSet(member0, 0, clk.tick(), ol0);
-        ChangeSet m1 = new ChangeSet(member0, 0, clk.tick(), ol1);
+        ChangeSet m0 = new ChangeSet(replicaName0, 0, clk.tick(), ol0);
+        ChangeSet m1 = new ChangeSet(replicaName0, 0, clk.tick(), ol1);
 
-        context.update(m0);
-        context.update(m1);
+        masterBacklog.update(m0);
+        masterBacklog.update(m1);
 
-        assertEquals(context.getRemoteTime(), 2);
+        assertEquals(masterBacklog.getRemoteTime(), 2);
 
     }
 
     @Test
-    public void testLeaderContextSynchronizationOnContextInequivalence() throws BacklogException {
+    public void testMasterBacklogSynchronizationOnContextInequivalence() throws BacklogException {
 
         Clock cm = new Clock();
         Clock cl = new Clock();
@@ -95,29 +95,29 @@ public class MasterBacklogTest {
         Operation[] ol0 = new Operation[]{a0, b0},
                     ol1 = new Operation[]{c0, d0};
 
-        ChangeSet mm = new ChangeSet(member0, cm.tick(), 0, ol0);
-        ChangeSet ml = new ChangeSet(member1, 0, cl.tick(), ol1);
+        ChangeSet mm = new ChangeSet(replicaName0, cm.tick(), 0, ol0);
+        ChangeSet ml = new ChangeSet(replicaName1, 0, cl.tick(), ol1);
 
-        context.append(mm);
-        ml = context.update(ml);
+        masterBacklog.append(mm);
+        ml = masterBacklog.update(ml);
 
         assertEquals(c2, ml.getOperations()[0]);
         assertEquals(d2, ml.getOperations()[1]);
     }
 
     @Test
-    public void testLeaderContextSynchronizationOnContextEquivalence() throws BacklogException {
+    public void testMasterBacklogSynchronizationOnContextEquivalence() throws BacklogException {
         Clock cm = new Clock();
         Clock cl = new Clock();
 
         Operation[] ol0 = new Operation[]{a0, b0},
                     ol1 = new Operation[]{c0, d0};
 
-        ChangeSet ml = new ChangeSet(member0, cm.tick(), 0, ol0);
-        ChangeSet mm = new ChangeSet(member1, cm.getTime(), cl.tick(), ol1);
+        ChangeSet ml = new ChangeSet(replicaName0, cm.tick(), 0, ol0);
+        ChangeSet mm = new ChangeSet(replicaName1, cm.getTime(), cl.tick(), ol1);
 
-        context.append(ml);
-        mm = context.update(mm);
+        masterBacklog.append(ml);
+        mm = masterBacklog.update(mm);
 
         assertEquals(c0, mm.getOperations()[0]);
         assertEquals(d0, mm.getOperations()[1]);
