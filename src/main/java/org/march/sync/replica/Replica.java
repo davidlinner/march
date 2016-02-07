@@ -13,7 +13,8 @@ import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.Clock;
-import org.march.sync.context.*;
+import org.march.sync.UncertainTemporalRelationException;
+import org.march.sync.backlog.*;
 import org.march.sync.channel.*;
 import org.march.sync.transform.Transformer;
 
@@ -24,7 +25,7 @@ public class Replica {
 
     private Clock clock;
 
-    private MasterBacklog context;
+    private MasterBacklog masterBacklog;
 
     private Model model;
 
@@ -41,11 +42,11 @@ public class Replica {
         this.channel = channel;
     }
 
-    public synchronized void open(Transformer transformer) throws ReplicaException {
+    public synchronized void activate(Transformer transformer) throws ReplicaException {
 
         if(state != ReplicaState.INACTIVE) throw new ReplicaException("Already opened.");
 
-        this.context = new MasterBacklog(transformer);
+        this.masterBacklog = new MasterBacklog(transformer);
         this.model   = new SimpleModel();
 
         channel.addReceiveListener(this.channelListener = new ChannelListener() {
@@ -64,15 +65,22 @@ public class Replica {
         this.state = ReplicaState.ACTIVATING;
     }
 
-    public synchronized void close(){
+    public synchronized void deactivate() throws ReplicaException {
         state = ReplicaState.DEACTIVATING;
 
         for(Listener listener : listeners){
-            if(listener instanceof CloseListener) ((CloseListener) listener).closed(this);
+            if(listener instanceof DeactivatingListener) ((DeactivatingListener) listener).deactivating(this);
         }
 
-        this.channel.removeReceiveListener(this.channelListener);
-        this.channelListener = null;
+        try {
+            this.channel.send(this.name, new ChangeSet(
+                                this.name,
+                                this.clock.getTime(),
+                                masterBacklog.getRemoteTime(),
+                                new Operation[0]));
+        } catch (ChannelException e) {
+             throw new ReplicaException("Cannot send empty change set.", e);
+        }
     }
 
     public synchronized void apply(Pointer pointer, Command command) throws ReplicaException {
@@ -81,10 +89,10 @@ public class Replica {
         try {
             model.apply(pointer, command);
 
-            ChangeSet changeSet = new ChangeSet(this.name, clock.tick(), context.getRemoteTime(),
+            ChangeSet changeSet = new ChangeSet(this.name, clock.tick(), masterBacklog.getRemoteTime(),
                     new Operation[]{new Operation(pointer, command)});
 
-            context.append(changeSet);
+            masterBacklog.append(changeSet);
 
             //this.channelListener.send(null, changeSet);
             this.channel.send(this.name, changeSet);
@@ -100,12 +108,14 @@ public class Replica {
     private synchronized void update(ChangeSet changeSet) throws ReplicaException {
 
         if(state == ReplicaState.ACTIVATING){
-            //if (!state == ReplicaState.ACTIVATING) throw new ReplicaException("Cannot set data. Replica is not ready yet or already closed.");
+            //if (!state == ReplicaState.ACTIVATING) throw new ReplicaException("Cannot set data. Replica is not ready yet or already deactivated.");
 
             try {
                 name = changeSet.getReplicaName();
                 model.apply(changeSet.getOperations());
-                context.setRemoteTime(changeSet.getMasterTime());
+
+                masterBacklog.setRemoteTime(changeSet.getMasterTime());
+
                 clock.setTime(changeSet.getReplicaTime());
             } catch (ObjectException | CommandException e) {
                 throw new ReplicaException("Cannot initialize member.", e);
@@ -118,25 +128,27 @@ public class Replica {
             }
 
         } else {
-            if (!ReplicaState.isSynchronizing(state)) throw new ReplicaException("Can only accept updates when sharing data or terminating.");
+            if (!ReplicaState.isAcceptingRemoteChanges(state)) throw new ReplicaException("Can only accept updates when sharing data or terminating.");
 
             try {
-                changeSet = this.context.update(changeSet);
+                changeSet = this.masterBacklog.update(changeSet);
 
-                model.apply(changeSet.getOperations());
-
-                for(Listener listener : listeners){
-                    if(listener instanceof ChangeListener) ((ChangeListener) listener).changed(this, changeSet.getOperations());
+                if(!changeSet.isEmpty()){
+                    model.apply(changeSet.getOperations());
+                    for(Listener listener : listeners){
+                        if(listener instanceof ChangeListener) ((ChangeListener) listener).changed(this, changeSet.getOperations());
+                    }
                 }
 
-
-                if(state == ReplicaState.DEACTIVATING && context.isEmpty()){
+                if(state == ReplicaState.DEACTIVATING && masterBacklog.isEmpty()){
                     //out buffer is empty, all change sets have been confirmed by server
                     state = ReplicaState.DEACTIVATED;
 
                     for(Listener listener : listeners){
-                        if(listener instanceof CloseListener) ((CloseListener) listener).closed(this);
+                        if(listener instanceof DeactivatedListener) ((DeactivatedListener) listener).deactivated(this);
                     }
+
+                    this.channel.removeReceiveListener(this.channelListener);
                 }
 
             } catch (ObjectException | CommandException e) {

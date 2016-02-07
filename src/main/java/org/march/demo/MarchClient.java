@@ -41,9 +41,9 @@ public class MarchClient {
 //
 //            addresses.add(null);
 //
-//            member.onCommand(new OperationHandler() {
+//            member.onCommand(new OperationListener() {
 //                @Override
-//                public void handleOperation(Operation operation) {
+//                public void update(Operation operation) {
 //                    //System.out.println(String.format("The command %s was applied to object %s.", command, pointer));
 //
 //                	Command command = operation.getCommand();
@@ -144,7 +144,7 @@ public class MarchClient {
 //                }
 //            }
 //
-//            client.close();
+//            client.deactivate();
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }

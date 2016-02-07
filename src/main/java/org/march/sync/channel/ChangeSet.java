@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.march.data.Operation;
 import org.march.data.Tools;
+import org.march.data.command.Nil;
 
 
 public class ChangeSet implements Cloneable, Serializable{
@@ -78,4 +79,9 @@ public class ChangeSet implements Cloneable, Serializable{
     public ChangeSet clone() {
         return new ChangeSet(this.getReplicaName(), this.getReplicaTime(), this.getMasterTime(), Tools.clone(this.getOperations()));
     }
+
+    public boolean isEmpty(){
+       return this.operations == null || this.operations.length == 0;
+    }
+
 }

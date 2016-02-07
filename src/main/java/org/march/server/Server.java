@@ -45,16 +45,16 @@ public class Server {
 //			send(dataMessage.getScope(), dataMessage.getChangeSet());
 //		} else if(message instanceof OpenMessage){
 //			OpenMessage openMessage = (OpenMessage)message;
-//			open(openMessage.getScope(), openMessage.getReplicaName());
+//			activate(openMessage.getScope(), openMessage.getReplicaName());
 //		} else if(message instanceof CloseMessage){
 //			CloseMessage closeMessage = (CloseMessage)message;
-//			close(closeMessage.getScope(), closeMessage.getReplicaName());
+//			deactivate(closeMessage.getScope(), closeMessage.getReplicaName());
 //		} else {
 //			//TODO: throw unknown message exception
 //		}
 //	}
 //
-//	private void open(String scope, UUID member) throws ServerException {
+//	private void activate(String scope, UUID member) throws ServerException {
 //
 //		Master leader = null;
 //		synchronized(leaders){
@@ -95,7 +95,7 @@ public class Server {
 //
 //	}
 //
-//	private void close(String scope, UUID member){
+//	private void deactivate(String scope, UUID member){
 //
 //	}
 //
@@ -105,9 +105,9 @@ public class Server {
 	
 	/*
 	 * create(member, scope):session
-	 * session.open((bucket) -> {})
+	 * session.activate((bucket) -> {})
 	 * session.update(bucket)
-	 * session.close()
+	 * session.deactivate()
 	 *  
 	 * 
 	 * 

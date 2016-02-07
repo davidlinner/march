@@ -1,4 +1,4 @@
-package org.march.sync.context;
+package org.march.sync.backlog;
 
 import java.util.LinkedList;
 
@@ -11,64 +11,60 @@ import org.march.sync.transform.Transformer;
 public abstract class Backlog {
 
 	private Transformer transformer;
-	private int remoteTime;
+	private Integer remoteTime;
 
 	private LinkedList<ChangeSet> queue;
 
 	public Backlog(Transformer transformer) {
 		this.transformer = transformer;
-
-		this.remoteTime = 0;
-
 		this.queue = new LinkedList<>();
 	}
 
-	public ChangeSet update(ChangeSet bucket) throws BacklogException {
+	public ChangeSet update(ChangeSet changeSet) throws BacklogException {
 
 		// remove messages member has seen already
 		try {
 			while (!queue.isEmpty()
 					&& !Clock.after(getLocalTime(queue.peek()),
-							getLocalTime(bucket))) {
+							getLocalTime(changeSet))) {
 				queue.poll();
 			}
 
 			// harmonize remaining messages in buffer and new message at once
 			for (ChangeSet enqueued : queue) {
 				transformer
-						.transform(bucket.getOperations(), enqueued
-								.getOperations(), bucket.getReplicaName()
+						.transform(changeSet.getOperations(), enqueued
+								.getOperations(), changeSet.getReplicaName()
 								.compareTo(enqueued.getReplicaName()) > 0);
 
 				// adjust times
-				setRemoteTime(enqueued, getRemoteTime(bucket));
-				setLocalTime(bucket, getLocalTime(enqueued));
+				setRemoteTime(enqueued, getRemoteTime(changeSet));
 			}
 
-			this.remoteTime = getRemoteTime(bucket); // make sure time is
+			this.remoteTime = getRemoteTime(changeSet); // make sure time is
 														// preserved on empty
 														// queue
 
-			return bucket;
+			return changeSet;
 
 		} catch (Exception e) {
 			throw new BacklogException(e);
 		}
 	}
 
-	public void append(ChangeSet bucket) throws BacklogException {
-		if (getRemoteTime(bucket) != this.remoteTime) {
+	public void append(ChangeSet changeSet) throws BacklogException {
+		if (getRemoteTime(changeSet) != this.remoteTime) {
 			throw new BacklogException("Message is out of synchronization.");
 		}
 
-		queue.offer(bucket.clone());
+		queue.offer(changeSet.clone());
 	}
 
 	public boolean isEmpty(){
 		return queue.isEmpty();
 	}
 
-	public int getRemoteTime() {
+	public Integer getRemoteTime() {
 		return this.remoteTime;
 	}
 

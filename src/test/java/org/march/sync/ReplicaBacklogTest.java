@@ -11,8 +11,8 @@ import org.march.data.Pointer;
 import org.march.data.StringConstant;
 import org.march.data.command.Insert;
 import org.march.sync.channel.ChangeSet;
-import org.march.sync.context.BacklogException;
-import org.march.sync.context.ReplicaBacklog;
+import org.march.sync.backlog.BacklogException;
+import org.march.sync.backlog.ReplicaBacklog;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
 
@@ -66,7 +66,7 @@ public class ReplicaBacklogTest {
         replicaBacklog.append(m1);
         
         //assertEquals(outboundBuffer.size(), 2);
-        assertEquals(replicaBacklog.getRemoteTime(), 0);
+        assertEquals(replicaBacklog.getRemoteTime().intValue(), 0);
     } 
     
     
@@ -84,7 +84,7 @@ public class ReplicaBacklogTest {
         replicaBacklog.update(m0);
         replicaBacklog.update(m1);
         
-        assertEquals(replicaBacklog.getRemoteTime(), 2);
+        assertEquals(replicaBacklog.getRemoteTime().intValue(), 2);
                     
     }
         

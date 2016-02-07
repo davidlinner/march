@@ -1,4 +1,4 @@
-package org.march.sync.context;
+package org.march.sync.backlog;
 
 public class BacklogException extends Exception {
 

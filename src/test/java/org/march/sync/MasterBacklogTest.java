@@ -11,8 +11,8 @@ import org.march.data.Pointer;
 import org.march.data.StringConstant;
 import org.march.data.command.Insert;
 import org.march.sync.channel.ChangeSet;
-import org.march.sync.context.BacklogException;
-import org.march.sync.context.MasterBacklog;
+import org.march.sync.backlog.BacklogException;
+import org.march.sync.backlog.MasterBacklog;
 import org.march.sync.transform.InsertInsertInclusion;
 import org.march.sync.transform.Transformer;
 
@@ -65,7 +65,7 @@ public class MasterBacklogTest {
         masterBacklog.append(m0);
         masterBacklog.append(m1);
 
-        assertEquals(masterBacklog.getRemoteTime(), 0);
+        assertEquals(masterBacklog.getRemoteTime().intValue(), 0);
     }
 
     @Test
@@ -82,7 +82,7 @@ public class MasterBacklogTest {
         masterBacklog.update(m0);
         masterBacklog.update(m1);
 
-        assertEquals(masterBacklog.getRemoteTime(), 2);
+        assertEquals(masterBacklog.getRemoteTime().intValue(), 2);
 
     }
 

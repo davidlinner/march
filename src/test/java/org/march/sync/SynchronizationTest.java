@@ -12,7 +12,7 @@ import org.march.data.Operation;
 import org.march.data.StringConstant;
 import org.march.data.command.Set;
 import org.march.sync.channel.ChannelListener;
-import org.march.sync.context.*;
+import org.march.sync.backlog.*;
 import org.march.sync.channel.ChangeSet;
 import org.march.sync.channel.ChannelException;
 import org.march.sync.channel.Channel;
@@ -82,10 +82,10 @@ public class SynchronizationTest {
 
 
         // initialize
-        master.share(new Operation[0], TRANSFORMER, null);
+        master.activate(new Operation[0], TRANSFORMER, null);
 
-        replica1.open(TRANSFORMER);
-        replica2.open(TRANSFORMER);
+        replica1.activate(TRANSFORMER);
+        replica2.activate(TRANSFORMER);
 
         // join
         master.register(name1);

@@ -11,7 +11,7 @@ public enum ReplicaState {
     DEACTIVATING,
     DEACTIVATED;
 
-    public static boolean isSynchronizing(ReplicaState state){
+    public static boolean isAcceptingRemoteChanges(ReplicaState state){
         return ACTIVE.equals(state) || DEACTIVATING.equals(state);
     }
 }
