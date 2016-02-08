@@ -2,6 +2,7 @@ package org.march.sync;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.Before;
@@ -9,6 +10,7 @@ import org.junit.Test;
 import org.march.data.Operation;
 import org.march.data.Pointer;
 import org.march.data.StringConstant;
+import org.march.data.Tools;
 import org.march.data.command.Insert;
 import org.march.sync.channel.ChangeSet;
 import org.march.sync.backlog.BacklogException;
@@ -55,9 +57,9 @@ public class ReplicaBacklogTest {
     public void testReplicaBacklogSend() throws BacklogException {
         
         Clock clk = new Clock();
-        
-        Operation[] ol0 = new Operation[]{a0, b0}, 
-                    ol1 = new Operation[]{c0, d0}; 
+
+        List<Operation> ol0 = Tools.asList(a0, b0),
+                ol1 = Tools.asList(c0, d0);
               
         ChangeSet m0 = new ChangeSet(member0, 0, clk.tick(), ol0);
         ChangeSet m1 = new ChangeSet(member0, 0, clk.tick(), ol1);
@@ -66,7 +68,7 @@ public class ReplicaBacklogTest {
         replicaBacklog.append(m1);
         
         //assertEquals(outboundBuffer.size(), 2);
-        assertEquals(replicaBacklog.getRemoteTime().intValue(), 0);
+        assertEquals(replicaBacklog.getRemoteTime(), 0);
     } 
     
     
@@ -74,28 +76,27 @@ public class ReplicaBacklogTest {
     public void testReplicaBacklogReceive() throws BacklogException {
         
         Clock clk = new Clock();
-              
-        Operation[] ol0 = new Operation[]{a0, b0}, 
-                    ol1 = new Operation[]{c0, d0}; 
+
+        List<Operation> ol0 = Tools.asList(a0, b0),
+                ol1 = Tools.asList(c0, d0);
               
         ChangeSet m0 = new ChangeSet(member0, clk.tick(), 0, ol0);
         ChangeSet m1 = new ChangeSet(member0, clk.tick(), 0, ol1);
         
         replicaBacklog.update(m0);
         replicaBacklog.update(m1);
-        
-        assertEquals(replicaBacklog.getRemoteTime().intValue(), 2);
-                    
+
+        assertEquals(replicaBacklog.getRemoteTime(), 2);
     }
         
     @Test
     public void testReplicaBacklogSynchronizationOnContextInequivalence() throws BacklogException {
         
         Clock cl = new Clock();
-        Clock cm = new Clock();       
-               
-        Operation[] ol0 = new Operation[]{a0, b0}, 
-                    ol1 = new Operation[]{c0, d0};
+        Clock cm = new Clock();
+
+        List<Operation> ol0 = Tools.asList(a0, b0),
+                ol1 = Tools.asList(c0, d0);
 
         ChangeSet ml = new ChangeSet(member0, 0, cl.tick(), ol0);
         ChangeSet mm = new ChangeSet(member1, cm.tick(), 0, ol1);
@@ -103,17 +104,17 @@ public class ReplicaBacklogTest {
         replicaBacklog.append(ml);
         mm = replicaBacklog.update(mm);
 
-        assertEquals(c2, mm.getOperations()[0]);
-        assertEquals(d2, mm.getOperations()[1]);
+        assertEquals(c2, mm.getOperations().get(0));
+        assertEquals(d2, mm.getOperations().get(1));
     }
     
     @Test
     public void testReplicaBacklogSynchronizationOnContextEquivalence() throws BacklogException {
         Clock cl = new Clock();
-        Clock cm = new Clock();        
-               
-        Operation[] ol0 = new Operation[]{a0, b0}, 
-                    ol1 = new Operation[]{c0, d0};
+        Clock cm = new Clock();
+
+        List<Operation> ol0 = Tools.asList(a0, b0),
+                ol1 = Tools.asList(c0, d0);
 
         ChangeSet ml = new ChangeSet(member0, 0, cl.tick(), ol0);
         ChangeSet mm = new ChangeSet(member1, cm.tick(), cl.getTime(), ol1);
@@ -121,7 +122,7 @@ public class ReplicaBacklogTest {
         replicaBacklog.append(ml);
         mm = replicaBacklog.update(mm);
         
-        assertEquals(c0,mm.getOperations()[0]);
-        assertEquals(d0,mm.getOperations()[1]);
+        assertEquals(c0,mm.getOperations().get(0));
+        assertEquals(d0,mm.getOperations().get(1));
     } 
 }

@@ -116,7 +116,7 @@ public class ModelTest {
         model.apply(p2, new Set("two", two));
         
         
-        List<Operation> operations = Arrays.asList(model.serialize());
+        List<Operation> operations = model.serialize();
         
         int c1 = operations.indexOf(new Operation(p1,  new Construct(Type.SEQUENCE))),
         	c2 = operations.indexOf(new Operation(p2,  new Construct(Type.HASH))),

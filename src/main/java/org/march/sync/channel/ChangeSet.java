@@ -2,6 +2,7 @@ package org.march.sync.channel;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import org.march.data.Operation;
@@ -17,13 +18,13 @@ public class ChangeSet implements Cloneable, Serializable{
 
     private int replicaTime, masterTime;
         
-    private Operation[] operations;
+    private List<Operation> operations;
 
     public ChangeSet(){
     }    
     
     public ChangeSet(UUID replicaName, int replicaTime, int masterTime,
-                     Operation[] operations) {
+                     List<Operation> operations) {
         super();
         this.replicaName = replicaName;
         this.replicaTime = replicaTime;
@@ -55,11 +56,11 @@ public class ChangeSet implements Cloneable, Serializable{
         this.masterTime = masterTime;
     }
 
-    public Operation[] getOperations() {
+    public List<Operation> getOperations() {
         return operations;
     }
 
-    public void setOperations(Operation[] operations) {
+    public void setOperations(List<Operation> operations) {
         this.operations = operations;
     }
 
@@ -68,11 +69,15 @@ public class ChangeSet implements Cloneable, Serializable{
 //        return this;
 //    }
 
+
     @Override
     public String toString() {
-        return "ChangeSet [replicaName=" + replicaName + ", replicaTime=" + replicaTime
-                + ", masterTime=" + masterTime + ", operations="
-                + Arrays.toString(operations) + "]";
+        return "ChangeSet{" +
+                "replicaName=" + replicaName +
+                ", replicaTime=" + replicaTime +
+                ", masterTime=" + masterTime +
+                ", operations=" + operations +
+                '}';
     }
 
     @Override
@@ -81,7 +86,7 @@ public class ChangeSet implements Cloneable, Serializable{
     }
 
     public boolean isEmpty(){
-       return this.operations == null || this.operations.length == 0;
+       return this.operations == null || this.operations.isEmpty();
     }
 
 }

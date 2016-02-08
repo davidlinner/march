@@ -1,16 +1,11 @@
 package org.march.sync.replica;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.UUID;
 
-import org.march.data.Command;
-import org.march.data.CommandException;
-import org.march.data.Data;
-import org.march.data.Model;
-import org.march.data.ObjectException;
-import org.march.data.Operation;
-import org.march.data.Pointer;
+import org.march.data.*;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.Clock;
 import org.march.sync.UncertainTemporalRelationException;
@@ -77,7 +72,7 @@ public class Replica {
                                 this.name,
                                 this.clock.getTime(),
                                 masterBacklog.getRemoteTime(),
-                                new Operation[0]));
+                                Collections.emptyList()));
         } catch (ChannelException e) {
              throw new ReplicaException("Cannot send empty change set.", e);
         }
@@ -90,7 +85,7 @@ public class Replica {
             model.apply(pointer, command);
 
             ChangeSet changeSet = new ChangeSet(this.name, clock.tick(), masterBacklog.getRemoteTime(),
-                    new Operation[]{new Operation(pointer, command)});
+                    Tools.asList(new Operation(pointer, command)));
 
             masterBacklog.append(changeSet);
 
@@ -112,7 +107,7 @@ public class Replica {
 
             try {
                 name = changeSet.getReplicaName();
-                model.apply(changeSet.getOperations());
+                model.apply(Tools.asArray(changeSet.getOperations()));
 
                 masterBacklog.setRemoteTime(changeSet.getMasterTime());
 
@@ -134,9 +129,9 @@ public class Replica {
                 changeSet = this.masterBacklog.update(changeSet);
 
                 if(!changeSet.isEmpty()){
-                    model.apply(changeSet.getOperations());
+                    model.apply(Tools.asArray(changeSet.getOperations()));
                     for(Listener listener : listeners){
-                        if(listener instanceof ChangeListener) ((ChangeListener) listener).changed(this, changeSet.getOperations());
+                        if(listener instanceof ChangeListener) ((ChangeListener) listener).changed(this, Tools.asArray(changeSet.getOperations()));
                     }
                 }
 

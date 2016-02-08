@@ -1,5 +1,7 @@
 package org.march.data;
 
+import java.util.List;
+
 public interface Model {
     public void apply(Pointer pointer, Command... commands) throws ObjectException, CommandException;
 
@@ -11,8 +13,8 @@ public interface Model {
     
     public Data find(Pointer pointer, int index) throws ObjectException, CommandException;
     
-    public Operation[] serialize(Pointer pointer) throws ObjectException;
+    public List<Operation> serialize(Pointer pointer) throws ObjectException;
     
-    public Operation[] serialize();
+    public List<Operation> serialize();
     
 }

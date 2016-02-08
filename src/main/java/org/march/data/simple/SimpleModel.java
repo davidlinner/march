@@ -148,7 +148,7 @@ public class SimpleModel implements Model{
     }
 
 	@Override
-	public Operation[] serialize(Pointer pointer) throws ObjectException {
+	public List<Operation> serialize(Pointer pointer) throws ObjectException {
 
         if (pointer == null) return serialize();
 
@@ -159,11 +159,11 @@ public class SimpleModel implements Model{
         }
 
         List<Operation> operations = serialize(pointer, pointable);
-        return operations.toArray(new Operation[operations.size()]);
+        return operations;
 	}
 	
 	@Override
-	public Operation[] serialize() {
+	public List<Operation> serialize() {
 		Pointer pointer;
 		List<Operation> operations = new LinkedList<Operation>();
 			
@@ -178,7 +178,7 @@ public class SimpleModel implements Model{
             operations.addAll(serialize(pointer, entry.getValue()));
 		}				
 		
-		return operations.toArray(new Operation[operations.size()]);
+		return operations;
 	}
 	
 	private List<Operation> serialize(Pointer pointer, Pointable pointable){

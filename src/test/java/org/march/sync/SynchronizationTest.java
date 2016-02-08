@@ -2,6 +2,7 @@ package org.march.sync;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Collections;
 import java.util.UUID;
 
 import org.junit.Before;
@@ -82,7 +83,7 @@ public class SynchronizationTest {
 
 
         // initialize
-        master.activate(new Operation[0], TRANSFORMER, null);
+        master.activate(Collections.emptyList(), TRANSFORMER, null);
 
         replica1.activate(TRANSFORMER);
         replica2.activate(TRANSFORMER);

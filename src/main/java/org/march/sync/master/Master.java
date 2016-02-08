@@ -2,10 +2,7 @@ package org.march.sync.master;
 
 import java.util.*;
 
-import org.march.data.CommandException;
-import org.march.data.Model;
-import org.march.data.ObjectException;
-import org.march.data.Operation;
+import org.march.data.*;
 import org.march.data.command.Nil;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.Clock;
@@ -40,7 +37,7 @@ public class Master {
         this.channel = channel;
     }
     
-    public synchronized void activate(Operation[] operations, Transformer transformer, OperationListener operationListener) throws MasterException {
+    public synchronized void activate(List<Operation> operations, Transformer transformer, OperationListener operationListener) throws MasterException {
 
         if (!MasterState.INACTIVE.equals(state))
             throw new MasterException("Cannot reset data once sharing was started.");
@@ -50,7 +47,7 @@ public class Master {
         this.operationListener = operationListener;
 
         try {
-            this.model.apply(operations);
+            this.model.apply(operations.toArray(new Operation[operations.size()]));
         } catch (ObjectException | CommandException e) {
             throw new MasterException("Cannot load operations into a consistent state representation model.", e);
         }
@@ -78,11 +75,11 @@ public class Master {
         state = MasterState.DEACTIVATED;
     }
 
-    public synchronized UUID[] registrations(){
-        return backlogs.keySet().toArray(new UUID[backlogs.keySet().size()]);
+    public synchronized Set<UUID> registrations(){
+        return new HashSet<UUID>(backlogs.keySet());
     }
     
-    public synchronized Operation[] read() {
+    public synchronized List<Operation> read() {
         return this.model.serialize();
     }
 
@@ -128,7 +125,7 @@ public class Master {
                         changeSet.getReplicaName(),
                         originBacklog.getRemoteTime(),
                         this.clock.getTime(),
-                        new Operation[0]));
+                        Collections.emptyList()));
 
                 return;
             } catch (ChannelException e) {
@@ -141,14 +138,14 @@ public class Master {
         try {
             changeSet = originBacklog.update(changeSet);
 
-            model.test(changeSet.getOperations());
+            model.test(Tools.asArray(changeSet.getOperations()));
 
             this.clock.tick();
 
-            model.apply(changeSet.getOperations());
+            model.apply(Tools.asArray(changeSet.getOperations()));
 
             if (this.operationListener != null) {
-                operationListener.update(changeSet.getOperations());
+                operationListener.update(Tools.asArray(changeSet.getOperations()));
             }
 
         } catch (BacklogException e) {
@@ -180,7 +177,7 @@ public class Master {
                             changeSet.getReplicaName(),
                             backlog.getRemoteTime(),
                             this.clock.getTime(),
-                            operations.toArray(new Operation[operations.size()]));
+                            operations);
 
                     backlog.append(update);
 

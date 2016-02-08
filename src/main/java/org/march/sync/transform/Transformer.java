@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.march.data.Command;
 import org.march.data.Operation;
+import org.march.data.Tools;
 
 public class Transformer {
     
@@ -22,6 +23,10 @@ public class Transformer {
     public void setInclusions(Inclusion[] inclusions){
         this.transformers.clear();
         this.transformers.addAll(Arrays.asList(inclusions));
+    }
+
+    public void transform(List<Operation> ol1, List<Operation> ol2, boolean inferior) throws TransformationUndefinedException {
+        transform(Tools.asArray(ol1), Tools.asArray(ol2), inferior);
     }
     
     public void transform(Operation[] ol1, Operation[] ol2, boolean inferior) throws TransformationUndefinedException{       

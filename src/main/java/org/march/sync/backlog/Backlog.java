@@ -11,7 +11,8 @@ import org.march.sync.transform.Transformer;
 public abstract class Backlog {
 
 	private Transformer transformer;
-	private Integer remoteTime;
+
+    private int remoteTime = Clock.getClockStart();
 
 	private LinkedList<ChangeSet> queue;
 
@@ -64,7 +65,7 @@ public abstract class Backlog {
 		return queue.isEmpty();
 	}
 
-	public Integer getRemoteTime() {
+	public int getRemoteTime() {
 		return this.remoteTime;
 	}
 
