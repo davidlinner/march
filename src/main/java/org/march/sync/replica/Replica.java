@@ -8,7 +8,6 @@ import java.util.UUID;
 import org.march.data.*;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.Clock;
-import org.march.sync.UncertainTemporalRelationException;
 import org.march.sync.backlog.*;
 import org.march.sync.channel.*;
 import org.march.sync.transform.Transformer;
@@ -37,9 +36,13 @@ public class Replica {
         this.channel = channel;
     }
 
+    public ReplicaState getState() {
+        return state;
+    }
+
     public synchronized void activate(Transformer transformer) throws ReplicaException {
 
-        if(state != ReplicaState.INACTIVE) throw new ReplicaException("Already opened.");
+        if(state != ReplicaState.INACTIVE) throw new ReplicaException("Already activated.");
 
         this.masterBacklog = new MasterBacklog(transformer);
         this.model   = new SimpleModel();
@@ -119,7 +122,7 @@ public class Replica {
             state = ReplicaState.ACTIVE;
 
             for(Listener listener : listeners){
-                if(listener instanceof OpenListener) ((OpenListener) listener).opened(this);
+                if(listener instanceof ActivationListener) ((ActivationListener) listener).activated(this);
             }
 
         } else {
@@ -140,7 +143,7 @@ public class Replica {
                     state = ReplicaState.DEACTIVATED;
 
                     for(Listener listener : listeners){
-                        if(listener instanceof DeactivatedListener) ((DeactivatedListener) listener).deactivated(this);
+                        if(listener instanceof DeactivationListener) ((DeactivationListener) listener).deactivated(this);
                     }
 
                     this.channel.removeReceiveListener(this.channelListener);

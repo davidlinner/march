@@ -9,7 +9,6 @@ participant Master
 == Initialization ==
 
 Controller -\ Client: load(uri)
-activate Controller
 activate Client
 
 Create Replica
@@ -17,15 +16,9 @@ Replica <- Client: channel
 Replica <- Client: activate(transformer)
 
 Client -\\ Server: replicate(resource: uri, replicaName: uuid)
+deactivate Client
 activate Server
 
-Controller \- Client: replica:Replica
-deactivate Client
-Create OpenListener
-Controller -> OpenListener
-
-Controller -> Replica: addListener(open:OpenListener)
-deactivate Controller
 
 alt no master found
     Server -> Server: load(uri): operations
@@ -45,16 +38,25 @@ activate Client
 
 Replica <- Client: send(replicaName:uuid, initial:ChangeSet)
 deactivate Client
-activate Replica
-
-OpenListener <- Replica: opened(replica: Replica)
-deactivate Replica
 
 Server \- Master
 deactivate Master
 
 Client \\- Server
 deactivate Server
+activate Client
+
+Controller \- Client: replica:Replica
+deactivate Client
+activate Controller
+
+Create OpenListener
+Controller -> OpenListener
+
+Controller -> Replica: addListener(open:OpenListener)
+deactivate Controller
+
+OpenListener <- Replica: opened(replica: Replica)
 
 
 @enduml
