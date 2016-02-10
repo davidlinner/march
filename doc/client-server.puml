@@ -1,6 +1,6 @@
 @startuml
 participant Controller
-participant OpenListener
+participant ActivationListener
 participant Replica
 participant Client
 participant Server
@@ -50,13 +50,15 @@ Controller \- Client: replica:Replica
 deactivate Client
 activate Controller
 
-Create OpenListener
-Controller -> OpenListener
+alt if replica state is still "activating" 
+Create ActivationListener
+Controller -> ActivationListener
 
-Controller -> Replica: addListener(open:OpenListener)
+Controller -> Replica: addListener(open:ActivationListener)
 deactivate Controller
 
-OpenListener <- Replica: opened(replica: Replica)
+ActivationListener <- Replica: activated(replica: Replica)
 
+end
 
 @enduml
