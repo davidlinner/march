@@ -1,4 +1,5 @@
-doc/
+### Powerpoint Presentations
+*.pptx
 
 ### Maven template
 target/

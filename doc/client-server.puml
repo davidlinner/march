@@ -1,0 +1,60 @@
+@startuml
+participant Controller
+participant OpenListener
+participant Replica
+participant Client
+participant Server
+participant Master
+
+== Initialization ==
+
+Controller -\ Client: load(uri)
+activate Controller
+activate Client
+
+Create Replica
+Replica <- Client: channel
+Replica <- Client: activate(transformer)
+
+Client -\\ Server: replicate(resource: uri, replicaName: uuid)
+activate Server
+
+Controller \- Client: replica:Replica
+deactivate Client
+Create OpenListener
+Controller -> OpenListener
+
+Controller -> Replica: addListener(open:OpenListener)
+deactivate Controller
+
+alt no master found
+    Server -> Server: load(uri): operations
+    create Master
+    Server -> Master: channel
+    Server -> Master: activate(operations, transformer, listener)
+end
+
+Server -\ Master: register(replicaName:uuid)
+activate Master
+
+Server <- Master: send(replicaName:uuid, initial:ChangeSet)
+activate Server
+Client <<-- Server: send(replicaName:uuid, initial:ChangeSet)
+deactivate Server
+activate Client
+
+Replica <- Client: send(replicaName:uuid, initial:ChangeSet)
+deactivate Client
+activate Replica
+
+OpenListener <- Replica: opened(replica: Replica)
+deactivate Replica
+
+Server \- Master
+deactivate Master
+
+Client \\- Server
+deactivate Server
+
+
+@enduml
