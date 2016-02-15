@@ -1,9 +1,8 @@
 package org.march.data.command;
 
-import org.march.data.Command;
-import org.march.data.Lifecycle;
+import org.march.data.model.Command;
 
-public class Destruct implements Lifecycle {
+public class Destruct implements Command {
     
     private static final long serialVersionUID = -3846145472821795961L;
 

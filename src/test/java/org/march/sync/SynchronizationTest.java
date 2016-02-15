@@ -7,16 +7,15 @@ import java.util.UUID;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.march.data.CommandException;
-import org.march.data.ObjectException;
-import org.march.data.Operation;
-import org.march.data.StringConstant;
+import org.march.data.model.CommandException;
+import org.march.data.model.ObjectException;
+import org.march.data.model.StringConstant;
 import org.march.data.command.Set;
-import org.march.sync.channel.ChannelListener;
+import org.march.sync.channel.CommitException;
+import org.march.sync.channel.CommitListener;
 import org.march.sync.backlog.*;
 import org.march.sync.channel.ChangeSet;
-import org.march.sync.channel.ChannelException;
-import org.march.sync.channel.Channel;
+import org.march.sync.channel.CommitChannel;
 import org.march.sync.master.Master;
 import org.march.sync.master.MasterException;
 import org.march.sync.replica.Replica;
@@ -34,18 +33,18 @@ public class SynchronizationTest {
     private StringConstant a = new StringConstant("A");
     private StringConstant b = new StringConstant("B");
 
-    PipeChannel client1, client2, server1, server2;
+    PipeCommitChannel client1, client2, server1, server2;
 
     static Transformer TRANSFORMER = new Transformer();
 
     @Before
-    public void setup() throws MasterException, BacklogException, ReplicaException, ChannelException {
+    public void setup() throws MasterException, BacklogException, ReplicaException, CommitException {
 
         // fake network
-        server1 = new PipeChannel();
-        server2 = new PipeChannel();
-        client1 = new PipeChannel();
-        client2 = new PipeChannel();
+        server1 = new PipeCommitChannel();
+        server2 = new PipeCommitChannel();
+        client1 = new PipeCommitChannel();
+        client2 = new PipeCommitChannel();
 
         server1.connect(client1);
         client1.connect(server1);
@@ -54,27 +53,27 @@ public class SynchronizationTest {
         client2.connect(server2);
 
         // setup
-        master = new Master(new Channel() {
+        master = new Master(new CommitChannel() {
             // fake dispatcher
 
             @Override
-            public void addReceiveListener(ChannelListener handler) {
+            public void addReceiveListener(CommitListener handler) {
                 server1.addReceiveListener(handler);
                 server2.addReceiveListener(handler);
             }
 
             @Override
-            public void removeReceiveListener(ChannelListener handler) {
+            public void removeReceiveListener(CommitListener handler) {
                 server1.removeReceiveListener(handler);
                 server2.removeReceiveListener(handler);
             }
 
             @Override
-            public void send(UUID member, ChangeSet changeSet) throws ChannelException {
+            public void commit(UUID member, ChangeSet changeSet) throws CommitException {
                 if(name1.equals(member))
-                    server1.send(member, changeSet);
+                    server1.commit(member, changeSet);
                 else
-                    server2.send(member, changeSet);
+                    server2.commit(member, changeSet);
             }
         });
 
@@ -96,7 +95,7 @@ public class SynchronizationTest {
     }
 
 
-    private void flushAll() throws ChannelException {
+    private void flushAll() throws CommitException {
         client1.flush();
         client2.flush();
         server1.flush();
@@ -104,7 +103,7 @@ public class SynchronizationTest {
     };
 
     @Test
-    public void testOneWaySynchronization() throws BacklogException, ReplicaException, ObjectException, CommandException, ChannelException {
+    public void testOneWaySynchronization() throws BacklogException, ReplicaException, ObjectException, CommandException, CommitException {
         replica1.apply(null, new Set("a", a));
 
         flushAll();
@@ -113,7 +112,7 @@ public class SynchronizationTest {
     }
 
     @Test
-    public void testTwoWaySynchronizationNoConflict() throws BacklogException, ReplicaException, ObjectException, CommandException, ChannelException {
+    public void testTwoWaySynchronizationNoConflict() throws BacklogException, ReplicaException, ObjectException, CommandException, CommitException {
         replica1.apply(null, new Set("a", a));
         replica2.apply(null, new Set("b", b));
 
@@ -124,7 +123,7 @@ public class SynchronizationTest {
     }
 
     @Test
-    public void testTwoWaySynchronizationOnConflict() throws BacklogException, ReplicaException, ObjectException, CommandException, ChannelException {
+    public void testTwoWaySynchronizationOnConflict() throws BacklogException, ReplicaException, ObjectException, CommandException, CommitException {
         replica1.apply(null, new Set("a", a));
         replica2.apply(null, new Set("a", b));
 

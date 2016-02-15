@@ -4,9 +4,9 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.march.data.Command;
-import org.march.data.Operation;
-import org.march.data.Tools;
+import org.march.data.model.Command;
+import org.march.data.model.Operation;
+import org.march.data.model.Tools;
 
 public class Transformer {
     

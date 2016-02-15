@@ -2,13 +2,13 @@ package org.march.data.simple;
 
 import java.util.LinkedList;
 
-import org.march.data.CommandException;
-import org.march.data.Constant;
-import org.march.data.Data;
-import org.march.data.ObjectException;
-import org.march.data.Pointer;
-import org.march.data.Model;
-import org.march.data.TypeException;
+import org.march.data.model.CommandException;
+import org.march.data.model.Constant;
+import org.march.data.model.Data;
+import org.march.data.model.ObjectException;
+import org.march.data.model.Pointer;
+import org.march.data.model.Model;
+import org.march.data.model.TypeException;
 
 
 public class Reference {

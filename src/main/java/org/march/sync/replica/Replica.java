@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.UUID;
 
-import org.march.data.*;
+import org.march.data.model.*;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.Clock;
 import org.march.sync.backlog.*;
@@ -25,15 +25,15 @@ public class Replica {
 
     private HashSet<Listener> listeners = new HashSet<Listener>();
 
-    private ChannelListener channelListener;
+    private CommitListener commitListener;
 
     private ReplicaState state = ReplicaState.INACTIVE;
 
-    private Channel channel;
+    private CommitChannel commitChannel;
 
-    public Replica(Channel channel){
+    public Replica(CommitChannel commitChannel){
         this.clock  = new Clock();
-        this.channel = channel;
+        this.commitChannel = commitChannel;
     }
 
     public ReplicaState getState() {
@@ -47,15 +47,15 @@ public class Replica {
         this.masterBacklog = new MasterBacklog(transformer);
         this.model   = new SimpleModel();
 
-        channel.addReceiveListener(this.channelListener = new ChannelListener() {
+        commitChannel.addReceiveListener(this.commitListener = new CommitListener() {
             @Override
-            public void send(UUID replicaName, ChangeSet changeSet) throws ChannelException {
+            public void commit(UUID replicaName, ChangeSet changeSet) throws CommitException {
 
-                if(state == ReplicaState.ACTIVE && !replicaName.equals(name)) throw new ChannelException("Not the right receiver.");
+                if(state == ReplicaState.ACTIVE && !replicaName.equals(name)) throw new CommitException("Not the right receiver.");
                 try {
                     Replica.this.update(changeSet);
                 } catch (ReplicaException e) {
-                    throw new ChannelException("Cannot send received changeSet.", e);
+                    throw new CommitException("Cannot commit received changeSet.", e);
                 }
             }
         });
@@ -71,36 +71,24 @@ public class Replica {
         }
 
         try {
-            this.channel.send(this.name, new ChangeSet(
-                                this.name,
-                                this.clock.getTime(),
-                                masterBacklog.getRemoteTime(),
-                                Collections.emptyList()));
-        } catch (ChannelException e) {
-             throw new ReplicaException("Cannot send empty change set.", e);
+            this.commitChannel.commit(this.name, new ChangeSet(
+                    this.name,
+                    this.clock.getTime(),
+                    masterBacklog.getRemoteTime(),
+                    Collections.emptyList()));
+        } catch (CommitException e) {
+             throw new ReplicaException("Cannot commit empty change set.", e);
         }
     }
 
-    public synchronized void apply(Pointer pointer, Command command) throws ReplicaException {
-        if(state != ReplicaState.ACTIVE) throw new ReplicaException("Can only change data when sharing.");
+    public synchronized void invalidate(){
+        state = ReplicaState.INVALID;
 
-        try {
-            model.apply(pointer, command);
-
-            ChangeSet changeSet = new ChangeSet(this.name, clock.tick(), masterBacklog.getRemoteTime(),
-                    Tools.asList(new Operation(pointer, command)));
-
-            masterBacklog.append(changeSet);
-
-            //this.channelListener.send(null, changeSet);
-            this.channel.send(this.name, changeSet);
-        } catch (BacklogException e) {
-            throw new ReplicaException(e);
-        } catch (ObjectException|CommandException e){
-            throw new ReplicaException(e);
-        } catch (ChannelException e) {
-            throw new ReplicaException("Cannot commit changes.", e);
+        for(Listener listener : listeners){
+            if(listener instanceof InvalidationListener) ((InvalidationListener) listener).invalidated(this);
         }
+
+        this.commitChannel.removeReceiveListener(this.commitListener);
     }
 
     private synchronized void update(ChangeSet changeSet) throws ReplicaException {
@@ -109,7 +97,7 @@ public class Replica {
             //if (!state == ReplicaState.ACTIVATING) throw new ReplicaException("Cannot set data. Replica is not ready yet or already deactivated.");
 
             try {
-                name = changeSet.getReplicaName();
+                name = changeSet.getOriginReplicaName();
                 model.apply(Tools.asArray(changeSet.getOperations()));
 
                 masterBacklog.setRemoteTime(changeSet.getMasterTime());
@@ -126,7 +114,7 @@ public class Replica {
             }
 
         } else {
-            if (!ReplicaState.isAcceptingRemoteChanges(state)) throw new ReplicaException("Can only accept updates when sharing data or terminating.");
+            if (!ReplicaState.isAcceptingRemoteChanges(state)) throw new ReplicaException("Can only delegate updates when sharing data or terminating.");
 
             try {
                 changeSet = this.masterBacklog.update(changeSet);
@@ -140,13 +128,7 @@ public class Replica {
 
                 if(state == ReplicaState.DEACTIVATING && masterBacklog.isEmpty()){
                     //out buffer is empty, all change sets have been confirmed by server
-                    state = ReplicaState.DEACTIVATED;
-
-                    for(Listener listener : listeners){
-                        if(listener instanceof DeactivationListener) ((DeactivationListener) listener).deactivated(this);
-                    }
-
-                    this.channel.removeReceiveListener(this.channelListener);
+                    deactivated();
                 }
 
             } catch (ObjectException | CommandException e) {
@@ -154,6 +136,38 @@ public class Replica {
             } catch (BacklogException e) {
                 throw new ReplicaException("Failed to contextualize changeSet.", e);
             }
+        }
+    }
+
+    private void deactivated(){
+        state = ReplicaState.DEACTIVATED;
+
+        for(Listener listener : listeners){
+            if(listener instanceof DeactivationListener) ((DeactivationListener) listener).deactivated(this);
+        }
+
+        this.commitChannel.removeReceiveListener(this.commitListener);
+    }
+
+    public synchronized void apply(Pointer pointer, Command command) throws ReplicaException {
+        if(state != ReplicaState.ACTIVE) throw new ReplicaException("Can only change data when sharing.");
+
+        try {
+            model.apply(pointer, command);
+
+            ChangeSet changeSet = new ChangeSet(this.name, clock.tick(), masterBacklog.getRemoteTime(),
+                    Tools.asList(new Operation(pointer, command)));
+
+            masterBacklog.append(changeSet);
+
+            //this.channelListener.commit(null, changeSet);
+            this.commitChannel.commit(this.name, changeSet);
+        } catch (BacklogException e) {
+            throw new ReplicaException(e);
+        } catch (ObjectException|CommandException e){
+            throw new ReplicaException(e);
+        } catch (CommitException e) {
+            throw new ReplicaException("Cannot commit changes.", e);
         }
     }
 

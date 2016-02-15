@@ -3,19 +3,17 @@ package org.march.data.simple;
 import java.util.*;
 import java.util.Map.Entry;
 
-import org.march.data.Command;
-import org.march.data.CommandException;
-import org.march.data.Data;
-import org.march.data.DuplicateObjectException;
-import org.march.data.Model;
-import org.march.data.Modification;
-import org.march.data.NoSuchObjectException;
-import org.march.data.ObjectException;
-import org.march.data.Operation;
-import org.march.data.Pointable;
-import org.march.data.Pointer;
-import org.march.data.TypeException;
-import org.march.data.UnsupportedCommandException;
+import org.march.data.model.Command;
+import org.march.data.model.CommandException;
+import org.march.data.model.Data;
+import org.march.data.model.DuplicateObjectException;
+import org.march.data.model.Model;
+import org.march.data.model.NoSuchObjectException;
+import org.march.data.model.ObjectException;
+import org.march.data.model.Operation;
+import org.march.data.model.Pointer;
+import org.march.data.model.TypeException;
+import org.march.data.model.UnsupportedCommandException;
 import org.march.data.command.Construct;
 import org.march.data.command.Delete;
 import org.march.data.command.Destruct;
@@ -63,7 +61,10 @@ public class SimpleModel implements Model{
             pointable = this.memory.get(this.context);
 
         for(Command command: commands){
-            if(command instanceof Modification){
+            if( command instanceof Set ||
+                    command instanceof Unset ||
+                    command instanceof Insert ||
+                    command instanceof Delete){
                 if(pointable == null){
                     throw new NoSuchObjectException("No such object.");
                 }

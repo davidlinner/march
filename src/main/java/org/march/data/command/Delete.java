@@ -1,9 +1,9 @@
 package org.march.data.command;
 
-import org.march.data.Command;
+import org.march.data.model.Command;
 import org.march.data.Modification;
 
-public class Delete implements Modification{    
+public class Delete implements Command{
    
     private static final long serialVersionUID = -6816099990978169646L;
    
@@ -17,15 +17,6 @@ public class Delete implements Modification{
         super();
         this.offset = offset;
     }
-   
-//    public Pointable apply(Pointable pointable) throws TypeException {
-//        if(!(pointable instanceof Sequence))
-//            throw new TypeException("No sequence.");
-//        
-//        ((Sequence)pointable).remove(this.offset);
-//        
-//        return pointable;
-//    }
 
     public int getOffset() {
         return offset;

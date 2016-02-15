@@ -15,8 +15,22 @@ Create Replica
 Replica <- Client: channel
 Replica <- Client: activate(transformer)
 
-Client -\\ Server: replicate(resource: uri, replicaName: uuid)
+Client -->> Server: replicate(resource: uri, replicaName: uuid)
+activate Server
+
+Controller \- Client: replica:Replica
 deactivate Client
+activate Controller
+
+alt if replica state is still "activating"
+    Create ActivationListener
+    Controller -> ActivationListener
+
+    Controller -> Replica: addListener(open:ActivationListener)
+    deactivate Controller
+
+end
+
 activate Server
 
 
@@ -30,34 +44,33 @@ end
 Server -\ Master: register(replicaName:uuid)
 activate Master
 
-Server <- Master: send(replicaName:uuid, initial:ChangeSet)
-activate Server
-Client <<-- Server: send(replicaName:uuid, initial:ChangeSet)
-deactivate Server
-activate Client
+alt on successful registration
+    Server <- Master: commit(replicaName:uuid, initial:ChangeSet)
+    activate Server
 
-Replica <- Client: send(replicaName:uuid, initial:ChangeSet)
-deactivate Client
+    Client <<-- Server: data(replicaName:uuid, initial:ChangeSet)
+    deactivate Server
+    activate Client
 
-Server \- Master
-deactivate Master
+    Replica <- Client: commit(replicaName:uuid, initial:ChangeSet)
+    deactivate Client
 
-Client \\- Server
-deactivate Server
-activate Client
+    activate Replica
+    ActivationListener <- Replica: activated(replica: Replica)
+    deactivate Replica
 
-Controller \- Client: replica:Replica
-deactivate Client
-activate Controller
+    Server \- Master: void
 
-alt if replica state is still "activating" 
-Create ActivationListener
-Controller -> ActivationListener
+else on error while registering
+    Server \- Master: exception
+    deactivate Master
 
-Controller -> Replica: addListener(open:ActivationListener)
-deactivate Controller
+    Client <<-- Server :error(replicaName:uuid)
+    deactivate Server
+    activate Client
 
-ActivationListener <- Replica: activated(replica: Replica)
+    Replica <- Client: invalidate()
+    deactivate Client
 
 end
 

@@ -1,6 +1,6 @@
 package org.march.sync.transform;
 
-import org.march.data.Command;
+import org.march.data.model.Command;
 import org.march.data.command.Nil;
 
 public class CommandNilInclusion implements Inclusion {

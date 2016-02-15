@@ -18,7 +18,7 @@ public class MarchServer {
 //
 //        while (true) {
 //            try {
-//                Socket socket = serverSocket.accept();
+//                Socket socket = serverSocket.delegate();
 //                System.out.println("Client connected ...");
 //
 //                ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());

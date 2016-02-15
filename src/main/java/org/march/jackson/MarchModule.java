@@ -1,8 +1,8 @@
 package org.march.jackson;
 
-import org.march.data.Command;
-import org.march.data.Constant;
-import org.march.data.Data;
+import org.march.data.model.Command;
+import org.march.data.model.Constant;
+import org.march.data.model.Data;
 import org.march.sync.channel.ChangeSet;
 
 import com.fasterxml.jackson.databind.module.SimpleModule;

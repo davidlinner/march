@@ -9,7 +9,8 @@ public enum ReplicaState {
     ACTIVATING,
     ACTIVE,
     DEACTIVATING,
-    DEACTIVATED;
+    DEACTIVATED,
+    INVALID;
 
     public static boolean isAcceptingRemoteChanges(ReplicaState state){
         return ACTIVE.equals(state) || DEACTIVATING.equals(state);

@@ -1,10 +1,18 @@
 @startuml
 
 [*] --> Inactive: Create
-Inactive --> Activating: load (schema)
+Inactive --> Activating: activate (schema)
 Activating --> Active: in - base (data)
+Activating --> Invalid: invalidate
 Active --> Active: in - update
 Active --> Active: apply; out - update
-Active --> Deactivating: close
-Deactivating --> Deactivated: in - update (backlog empty or quiscence)
+Active --> Deactivating: deactivate
+Active --> Invalid: invalidate
+Deactivating --> Deactivating: in - update
+Deactivating --> Deactivated: in - update and backlog empty
+Deactivating --> Invalid: invalidate
+
+Deactivated --> [*]
+Invalid --> [*]
+
 @enduml

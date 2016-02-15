@@ -2,11 +2,11 @@ package org.march.sync.master;
 
 import java.util.*;
 
-import org.march.data.*;
+import org.march.data.Resource;
 import org.march.data.command.Nil;
+import org.march.data.model.*;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.Clock;
-import org.march.sync.UncertainTemporalRelationException;
 import org.march.sync.backlog.*;
 import org.march.sync.channel.*;
 import org.march.sync.transform.Transformer;
@@ -21,30 +21,30 @@ public class Master {
     
     private Model model;
 
-    private OperationListener operationListener;
+    private CommitListener commitListener;
 
-    private ChannelListener channelListener;
+    private CommitChannel commitChannel;
 
-    private Channel channel;
+    private Resource resource;
 
     private MasterState state = MasterState.INACTIVE;
 
-    public Master(Channel channel){
+    public Master(CommitChannel commitChannel){
         this.backlogs       = new HashMap<UUID, ReplicaBacklog>();
         this.clock          = new Clock();
         this.model          = new SimpleModel();
 
-        this.channel = channel;
+        this.commitChannel = commitChannel;
     }
     
-    public synchronized void activate(List<Operation> operations, Transformer transformer, OperationListener operationListener) throws MasterException {
+    public synchronized void activate(Resource resource, Transformer transformer) throws MasterException {
 
         if (!MasterState.INACTIVE.equals(state))
             throw new MasterException("Cannot reset data once sharing was started.");
 
         this.transformer    = transformer;
 
-        this.operationListener = operationListener;
+        List<Operation> operations = resource.getData();
 
         try {
             this.model.apply(operations.toArray(new Operation[operations.size()]));
@@ -52,13 +52,13 @@ public class Master {
             throw new MasterException("Cannot load operations into a consistent state representation model.", e);
         }
 
-        this.channel.addReceiveListener(this.channelListener = new ChannelListener() {
+        this.commitChannel.addReceiveListener(this.commitListener = new CommitListener() {
             @Override
-            public void send(UUID member, ChangeSet changeSet) throws ChannelException {
+            public void commit(UUID member, ChangeSet changeSet) throws CommitException {
                 try {
                     Master.this.update(changeSet);
                 } catch (MasterException e) {
-                    throw new ChannelException("Cannot send received changeSet.", e);
+                    throw new CommitException("Cannot commit received changeSet.", e);
                 }
             }
         });
@@ -67,10 +67,11 @@ public class Master {
     }
 
     public synchronized void deactivate() throws MasterException {
-        this.channel.removeReceiveListener(this.channelListener);
+        this.commitChannel.removeReceiveListener(this.commitListener);
 
-        this.channelListener = null;
-        this.operationListener = null;
+        this.commitListener = null;
+
+        this.resource = null;
 
         state = MasterState.DEACTIVATED;
     }
@@ -95,8 +96,8 @@ public class Master {
 
             ChangeSet base = new ChangeSet(replicaName, backlog.getRemoteTime(), this.clock.getTime(), this.model.serialize());
             try {
-                this.channel.send(replicaName, base);
-            } catch (ChannelException e) {
+                this.commitChannel.commit(replicaName, base);
+            } catch (CommitException e) {
                 throw new MasterException("Cannot initialize new replicaName.", e);
             }
         } else {
@@ -108,29 +109,37 @@ public class Master {
         ReplicaBacklog replicaBacklog = backlogs.remove(replicaName);
     }
 
+    public synchronized MasterState getState(){
+        return this.state;
+    }
+
+    public CommitChannel getCommitChannel(){
+        return this.commitChannel;
+    }
+
     private synchronized void update(ChangeSet changeSet) throws MasterException {
 
         if (!MasterState.ACTIVE.equals(state))
-            throw new MasterException("Can only accept updates when actively sharing data.");
+            throw new MasterException("Can only delegate updates when actively sharing data.");
 
-        ReplicaBacklog originBacklog = backlogs.get(changeSet.getReplicaName());
+        ReplicaBacklog originBacklog = backlogs.get(changeSet.getOriginReplicaName());
 
         if (originBacklog == null)
-            throw new MasterException(String.format("Replica '%s' is unknown.", changeSet.getReplicaName()));
+            throw new MasterException(String.format("Replica '%s' is unknown.", changeSet.getOriginReplicaName()));
 
         if(changeSet.isEmpty()){
             // replica is challenging an update of the time
             try {
-                this.channel.send(changeSet.getReplicaName(), new ChangeSet(
-                        changeSet.getReplicaName(),
+                this.commitChannel.commit(changeSet.getOriginReplicaName(), new ChangeSet(
+                        changeSet.getOriginReplicaName(),
                         originBacklog.getRemoteTime(),
                         this.clock.getTime(),
                         Collections.emptyList()));
 
                 return;
-            } catch (ChannelException e) {
-                unregister(changeSet.getReplicaName());
-                throw new MasterException("Cannot send a clearing set.", e);
+            } catch (CommitException e) {
+                unregister(changeSet.getOriginReplicaName());
+                throw new MasterException("Cannot commit a clearing set.", e);
             }
         }
 
@@ -144,23 +153,21 @@ public class Master {
 
             model.apply(Tools.asArray(changeSet.getOperations()));
 
-            if (this.operationListener != null) {
-                operationListener.update(Tools.asArray(changeSet.getOperations()));
-            }
+            this.resource.update(Tools.asArray(changeSet.getOperations()));
 
         } catch (BacklogException e) {
 
-            unregister(changeSet.getReplicaName());
+            unregister(changeSet.getOriginReplicaName());
 
             throw new MasterException("Cannot contextualize changeSet.", e);
         } catch (ObjectException | CommandException e) {
 
-            unregister(changeSet.getReplicaName());
+            unregister(changeSet.getOriginReplicaName());
 
             throw new MasterException("Changes cannot be applied.", e);
         }
 
-        // put change set into context of other replicas and send
+        // put change set into context of other replicas and commit
         for (Map.Entry<UUID, ReplicaBacklog> entry: backlogs.entrySet()) {
             UUID replicaName       = entry.getKey();
             ReplicaBacklog backlog = entry.getValue();
@@ -174,40 +181,39 @@ public class Master {
 
                 try {
                     ChangeSet update = new ChangeSet(
-                            changeSet.getReplicaName(),
+                            changeSet.getOriginReplicaName(),
                             backlog.getRemoteTime(),
                             this.clock.getTime(),
                             operations);
 
                     backlog.append(update);
 
-                    this.channel.send(replicaName, update);
+                    this.commitChannel.commit(replicaName, update);
 
-                } catch (BacklogException | ChannelException e) {
+                } catch (BacklogException | CommitException e) {
                     unregister(replicaName);
                     //todo: collect errors or log them
                 }
             }
         }
 
-        // in case of a strong deviation of clocks send an empty message to origin replica to update clocks (effectively clear queues)
+        // in case of a strong deviation of clocks commit an empty channel to origin replica to update clocks (effectively clear queues)
 //        try {
 //            if(Clock.lag(this.clock.getTime(), originBacklog.getLocalTime()) > 50) {
-//                this.channel.send(changeSet.getReplicaName(), new ChangeSet(
-//                        changeSet.getReplicaName(),
+//                this.channel.commit(changeSet.getOriginReplicaName(), new ChangeSet(
+//                        changeSet.getOriginReplicaName(),
 //                        originBacklog.getRemoteTime(),
 //                        this.clock.getTime(),
 //                        new Operation[0]));
 //            }
 //        } catch (UncertainTemporalRelationException e) {
-//            unregister(changeSet.getReplicaName());
+//            unregister(changeSet.getOriginReplicaName());
 //
 //            throw new MasterException("Cannot determine lag.", e);
 //        } catch (ChannelException e) {
-//            unregister(changeSet.getReplicaName());
+//            unregister(changeSet.getOriginReplicaName());
 //
-//            throw new MasterException("Cannot send a clearing set.", e);
+//            throw new MasterException("Cannot commit a clearing set.", e);
 //        }
     }
-        
 }

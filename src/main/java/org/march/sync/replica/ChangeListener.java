@@ -1,6 +1,6 @@
 package org.march.sync.replica;
 
-import org.march.data.Operation;
+import org.march.data.model.Operation;
 
 /**
  * Created by dli on 31.01.2016.

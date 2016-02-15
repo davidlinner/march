@@ -2,10 +2,10 @@ package org.march.jackson;
 
 import java.io.IOException;
 
-import org.march.data.BooleanConstant;
-import org.march.data.Constant;
-import org.march.data.NumberConstant;
-import org.march.data.StringConstant;
+import org.march.data.model.BooleanConstant;
+import org.march.data.model.Constant;
+import org.march.data.model.NumberConstant;
+import org.march.data.model.StringConstant;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;

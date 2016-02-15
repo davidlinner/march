@@ -1,20 +1,18 @@
 package org.march.sync.channel;
 
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import org.march.data.Operation;
-import org.march.data.Tools;
-import org.march.data.command.Nil;
+import org.march.data.model.Operation;
+import org.march.data.model.Tools;
 
 
 public class ChangeSet implements Cloneable, Serializable{
         
     private static final long serialVersionUID = 9031957263780176801L;
 
-    private UUID replicaName;
+    private UUID originReplicaName;
 
     private int replicaTime, masterTime;
         
@@ -23,21 +21,21 @@ public class ChangeSet implements Cloneable, Serializable{
     public ChangeSet(){
     }    
     
-    public ChangeSet(UUID replicaName, int replicaTime, int masterTime,
+    public ChangeSet(UUID originReplicaName, int replicaTime, int masterTime,
                      List<Operation> operations) {
         super();
-        this.replicaName = replicaName;
+        this.originReplicaName = originReplicaName;
         this.replicaTime = replicaTime;
         this.masterTime = masterTime;
         this.operations = operations;
     }
 
-    public UUID getReplicaName() {
-        return replicaName;
+    public UUID getOriginReplicaName() {
+        return originReplicaName;
     }
 
-    public void setReplicaName(UUID replicaName) {
-        this.replicaName = replicaName;
+    public void setOriginReplicaName(UUID originReplicaName) {
+        this.originReplicaName = originReplicaName;
     }
 
     public int getReplicaTime() {
@@ -73,7 +71,7 @@ public class ChangeSet implements Cloneable, Serializable{
     @Override
     public String toString() {
         return "ChangeSet{" +
-                "replicaName=" + replicaName +
+                "originReplicaName=" + originReplicaName +
                 ", replicaTime=" + replicaTime +
                 ", masterTime=" + masterTime +
                 ", operations=" + operations +
@@ -82,7 +80,7 @@ public class ChangeSet implements Cloneable, Serializable{
 
     @Override
     public ChangeSet clone() {
-        return new ChangeSet(this.getReplicaName(), this.getReplicaTime(), this.getMasterTime(), Tools.clone(this.getOperations()));
+        return new ChangeSet(this.getOriginReplicaName(), this.getReplicaTime(), this.getMasterTime(), Tools.clone(this.getOperations()));
     }
 
     public boolean isEmpty(){
