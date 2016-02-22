@@ -1,7 +1,7 @@
 package org.march.plays;
 
-import org.march.data.Pointer;
-import org.march.data.StringConstant;
+import org.march.data.model.Pointer;
+import org.march.data.model.StringConstant;
 import org.march.data.command.Construct;
 import org.march.data.command.Insert;
 import org.march.data.command.Set;

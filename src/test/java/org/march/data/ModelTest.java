@@ -2,7 +2,6 @@ package org.march.data;
 
 import static org.junit.Assert.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Before;
@@ -14,6 +13,7 @@ import org.march.data.command.Insert;
 import org.march.data.command.Set;
 import org.march.data.command.Type;
 import org.march.data.command.Unset;
+import org.march.data.model.*;
 import org.march.data.simple.SimpleModel;
 
 public class ModelTest {
@@ -26,7 +26,7 @@ public class ModelTest {
     }
 
     @Test(expected=DuplicateObjectException.class)
-    public void testConstructHashNoPointer() throws ObjectException, CommandException {        
+    public void testConstructHashNoPointer() throws ObjectException, CommandException {
         model.apply(null, new Construct(Type.HASH));        
     }
     
@@ -116,7 +116,7 @@ public class ModelTest {
         model.apply(p2, new Set("two", two));
         
         
-        List<Operation> operations = Arrays.asList(model.serialize());
+        List<Operation> operations = model.serialize();
         
         int c1 = operations.indexOf(new Operation(p1,  new Construct(Type.SEQUENCE))),
         	c2 = operations.indexOf(new Operation(p2,  new Construct(Type.HASH))),

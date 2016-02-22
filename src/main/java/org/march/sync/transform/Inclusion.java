@@ -1,6 +1,6 @@
 package org.march.sync.transform;
 
-import org.march.data.Command;
+import org.march.data.model.Command;
 
 public interface Inclusion {
     boolean canInclude(Command o1, Command o2);    

@@ -1,7 +1,7 @@
 package org.march.jackson;
 
-import org.march.data.Constant;
-import org.march.data.Pointer;
+import org.march.data.model.Constant;
+import org.march.data.model.Pointer;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;

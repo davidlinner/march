@@ -1,0 +1,17 @@
+@startuml
+
+[*] --> Inactive: Create (channel)
+Inactive --> Active: load (data, schema, changelistener)
+Active --> Active: in - update; out - update
+Active --> Active: register
+Active --> Active: unregister
+Active --> Deactivated: close (only when no replica left, exception otherwise)
+
+@enduml
+
+
+master prepare / set channel
+load data
+sync - add/remove replica
+stopping
+stopped

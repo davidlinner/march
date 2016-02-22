@@ -1,9 +1,8 @@
 package org.march.data.command;
 
-import org.march.data.Command;
-import org.march.data.Lifecycle;
+import org.march.data.model.Command;
 
-public class Construct implements Lifecycle {
+public class Construct implements Command {
     
     private static final long serialVersionUID = -3497711464981411229L;
     

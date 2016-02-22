@@ -8,9 +8,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.march.data.Operation;
-import org.march.data.Pointer;
-import org.march.data.StringConstant;
+import org.march.data.model.Operation;
+import org.march.data.model.Pointer;
+import org.march.data.model.StringConstant;
 import org.march.data.command.Insert;
 
 @RunWith(Parameterized.class)

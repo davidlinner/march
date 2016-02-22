@@ -1,12 +1,12 @@
 # Arch. Todos
-* consider full state communication messages
+* consider full masterState communication messages
 * solve thread synchronization issue
 
 
 # Agenda
 1. message queue/event handling refactoring + proper clock implementation and clock drift error
 1.1. com test implementation
-2. completion of object model implementation (state retrieval / serialization)
+2. completion of object model implementation (masterState retrieval / serialization)
 2.1 test for object model implementation
 3. integration of object model with com 
 3.1 mutual update tests
@@ -16,16 +16,16 @@
 
 5. js object model implementation
 5.1 test for js object model
-6. js com implementation (member only)
+6. js com implementation (replicaName only)
 6.1 tests for js com implementation
 
-7 com setup / proper state initialization
-7.1 test for state initialization
+7 com setup / proper masterState initialization
+7.1 test for masterState initialization
 
 <--- here we are now
 
 8. server
-8.1 member lifecycle tests
+8.1 replicaName lifecycle tests
 8.2 various error scenario tests
 
 9. datastore connector for files
@@ -61,3 +61,10 @@
 tbd.
 plugin for common java and js mvc frameworks (spring, backbone, angular, ember)?
 think of persistence in key-value store (cassandra, redis)
+
+- master - time controlled heartbeat to make sure all queues are emptied
+- refactor api arrays  into collections
+- server controller
+- client refactoring
+- client controller
+- sparc binding server

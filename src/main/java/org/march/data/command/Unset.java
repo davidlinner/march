@@ -1,9 +1,8 @@
 package org.march.data.command;
 
-import org.march.data.Command;
-import org.march.data.Modification;
+import org.march.data.model.Command;
 
-public class Unset implements Modification{    
+public class Unset implements Command{
    
     /**
      * 

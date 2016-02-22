@@ -1,0 +1,77 @@
+@startuml
+participant Controller
+participant ActivationListener
+participant Replica
+participant Client
+participant Server
+participant Master
+
+== Initialization ==
+
+Controller -\ Client: load(uri)
+activate Client
+
+Create Replica
+Replica <- Client: channel
+Replica <- Client: activate(transformer)
+
+Client -->> Server: replicate(resource: uri, replicaName: uuid)
+activate Server
+
+Controller \- Client: replica:Replica
+deactivate Client
+activate Controller
+
+alt if replica state is still "activating"
+    Create ActivationListener
+    Controller -> ActivationListener
+
+    Controller -> Replica: addListener(open:ActivationListener)
+    deactivate Controller
+
+end
+
+activate Server
+
+
+alt no master found
+    Server -> Server: load(uri): operations
+    create Master
+    Server -> Master: channel
+    Server -> Master: activate(operations, transformer, listener)
+end
+
+Server -\ Master: register(replicaName:uuid)
+activate Master
+
+alt on successful registration
+    Server <- Master: receive(replicaName:uuid, initial:ChangeSet)
+    activate Server
+
+    Client <<-- Server: data(replicaName:uuid, initial:ChangeSet)
+    deactivate Server
+    activate Client
+
+    Replica <- Client: receive(replicaName:uuid, initial:ChangeSet)
+    deactivate Client
+
+    activate Replica
+    ActivationListener <- Replica: activated(replica: Replica)
+    deactivate Replica
+
+    Server \- Master: void
+
+else on error while registering
+    Server \- Master: exception
+    deactivate Master
+
+    Client <<-- Server :error(replicaName:uuid)
+    deactivate Server
+    activate Client
+
+    Replica <- Client: invalidate()
+    deactivate Client
+
+end
+
+@enduml

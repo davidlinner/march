@@ -1,10 +1,9 @@
 package org.march.data.command;
 
-import org.march.data.Command;
-import org.march.data.Data;
-import org.march.data.Modification;
+import org.march.data.model.Command;
+import org.march.data.model.Data;
 
-public class Set implements Modification{    
+public class Set implements Command{
       
     private static final long serialVersionUID = 5037939691001432553L;
   
