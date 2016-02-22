@@ -45,14 +45,14 @@ Server -\ Master: register(replicaName:uuid)
 activate Master
 
 alt on successful registration
-    Server <- Master: commit(replicaName:uuid, initial:ChangeSet)
+    Server <- Master: receive(replicaName:uuid, initial:ChangeSet)
     activate Server
 
     Client <<-- Server: data(replicaName:uuid, initial:ChangeSet)
     deactivate Server
     activate Client
 
-    Replica <- Client: commit(replicaName:uuid, initial:ChangeSet)
+    Replica <- Client: receive(replicaName:uuid, initial:ChangeSet)
     deactivate Client
 
     activate Replica

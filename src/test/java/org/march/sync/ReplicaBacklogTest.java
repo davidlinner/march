@@ -12,7 +12,7 @@ import org.march.data.model.Pointer;
 import org.march.data.model.StringConstant;
 import org.march.data.model.Tools;
 import org.march.data.command.Insert;
-import org.march.sync.channel.ChangeSet;
+import org.march.sync.endpoint.ChangeSet;
 import org.march.sync.backlog.BacklogException;
 import org.march.sync.backlog.ReplicaBacklog;
 import org.march.sync.transform.InsertInsertInclusion;

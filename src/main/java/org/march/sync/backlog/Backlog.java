@@ -3,11 +3,11 @@ package org.march.sync.backlog;
 import java.util.LinkedList;
 
 import org.march.sync.Clock;
-import org.march.sync.channel.ChangeSet;
+import org.march.sync.endpoint.ChangeSet;
 import org.march.sync.transform.Transformer;
 
 
-// TODO: add member uuid as field and check member of channel against this field on reception
+// TODO: add member uuid as field and check member of endpoint against this field on reception
 public abstract class Backlog {
 
 	private Transformer transformer;
@@ -31,7 +31,7 @@ public abstract class Backlog {
 				queue.poll();
 			}
 
-			// harmonize remaining messages in buffer and new channel at once
+			// harmonize remaining messages in buffer and new endpoint at once
 			for (ChangeSet enqueued : queue) {
 				transformer
 						.transform(changeSet.getOperations(), enqueued

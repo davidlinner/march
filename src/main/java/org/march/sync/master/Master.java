@@ -8,7 +8,7 @@ import org.march.data.model.*;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.Clock;
 import org.march.sync.backlog.*;
-import org.march.sync.channel.*;
+import org.march.sync.endpoint.*;
 import org.march.sync.transform.Transformer;
 
 public class Master {
@@ -21,20 +21,20 @@ public class Master {
     
     private Model model;
 
-    private CommitListener commitListener;
+    private UpdateListener updateListener;
 
-    private CommitChannel commitChannel;
+    private UpdateEndpoint endpoint;
 
     private Resource resource;
 
     private MasterState state = MasterState.INACTIVE;
 
-    public Master(CommitChannel commitChannel){
+    public Master(UpdateEndpoint endpoint){
         this.backlogs       = new HashMap<UUID, ReplicaBacklog>();
         this.clock          = new Clock();
         this.model          = new SimpleModel();
 
-        this.commitChannel = commitChannel;
+        this.endpoint = endpoint;
     }
     
     public synchronized void activate(Resource resource, Transformer transformer) throws MasterException {
@@ -43,6 +43,7 @@ public class Master {
             throw new MasterException("Cannot reset data once sharing was started.");
 
         this.transformer    = transformer;
+        this.resource       = resource;
 
         List<Operation> operations = resource.getData();
 
@@ -52,13 +53,13 @@ public class Master {
             throw new MasterException("Cannot load operations into a consistent state representation model.", e);
         }
 
-        this.commitChannel.addReceiveListener(this.commitListener = new CommitListener() {
+        this.endpoint.setUpdateListener(this.updateListener = new UpdateListener() {
             @Override
-            public void commit(UUID member, ChangeSet changeSet) throws CommitException {
+            public void receive(UUID member, ChangeSet changeSet) throws UpdateException {
                 try {
                     Master.this.update(changeSet);
                 } catch (MasterException e) {
-                    throw new CommitException("Cannot commit received changeSet.", e);
+                    throw new UpdateException("Cannot receive received changeSet.", e);
                 }
             }
         });
@@ -67,9 +68,9 @@ public class Master {
     }
 
     public synchronized void deactivate() throws MasterException {
-        this.commitChannel.removeReceiveListener(this.commitListener);
+        this.endpoint.setUpdateListener(null);
 
-        this.commitListener = null;
+        this.updateListener = null;
 
         this.resource = null;
 
@@ -96,12 +97,12 @@ public class Master {
 
             ChangeSet base = new ChangeSet(replicaName, backlog.getRemoteTime(), this.clock.getTime(), this.model.serialize());
             try {
-                this.commitChannel.commit(replicaName, base);
-            } catch (CommitException e) {
+                this.endpoint.send(replicaName, base);
+            } catch (UpdateException e) {
                 throw new MasterException("Cannot initialize new replicaName.", e);
             }
         } else {
-            throw new MasterException("Replica is already subscribed.");
+            throw new DuplicateRegistrationException("Replica is already subscribed.");
         }
     }
     
@@ -113,14 +114,14 @@ public class Master {
         return this.state;
     }
 
-    public CommitChannel getCommitChannel(){
-        return this.commitChannel;
+    public UpdateEndpoint getEndpoint(){
+        return this.endpoint;
     }
 
     private synchronized void update(ChangeSet changeSet) throws MasterException {
 
         if (!MasterState.ACTIVE.equals(state))
-            throw new MasterException("Can only delegate updates when actively sharing data.");
+            throw new MasterException("Can only receive updates when actively sharing data.");
 
         ReplicaBacklog originBacklog = backlogs.get(changeSet.getOriginReplicaName());
 
@@ -130,16 +131,16 @@ public class Master {
         if(changeSet.isEmpty()){
             // replica is challenging an update of the time
             try {
-                this.commitChannel.commit(changeSet.getOriginReplicaName(), new ChangeSet(
+                this.endpoint.send(changeSet.getOriginReplicaName(), new ChangeSet(
                         changeSet.getOriginReplicaName(),
                         originBacklog.getRemoteTime(),
                         this.clock.getTime(),
                         Collections.emptyList()));
 
                 return;
-            } catch (CommitException e) {
+            } catch (UpdateException e) {
                 unregister(changeSet.getOriginReplicaName());
-                throw new MasterException("Cannot commit a clearing set.", e);
+                throw new MasterException("Cannot receive a clearing set.", e);
             }
         }
 
@@ -167,7 +168,7 @@ public class Master {
             throw new MasterException("Changes cannot be applied.", e);
         }
 
-        // put change set into context of other replicas and commit
+        // put change set into context of other replicas and receive
         for (Map.Entry<UUID, ReplicaBacklog> entry: backlogs.entrySet()) {
             UUID replicaName       = entry.getKey();
             ReplicaBacklog backlog = entry.getValue();
@@ -188,19 +189,19 @@ public class Master {
 
                     backlog.append(update);
 
-                    this.commitChannel.commit(replicaName, update);
+                    this.endpoint.send(replicaName, update);
 
-                } catch (BacklogException | CommitException e) {
+                } catch (BacklogException | UpdateException e) {
                     unregister(replicaName);
                     //todo: collect errors or log them
                 }
             }
         }
 
-        // in case of a strong deviation of clocks commit an empty channel to origin replica to update clocks (effectively clear queues)
+        // in case of a strong deviation of clocks receive an empty endpoint to origin replica to update clocks (effectively clear queues)
 //        try {
 //            if(Clock.lag(this.clock.getTime(), originBacklog.getLocalTime()) > 50) {
-//                this.channel.commit(changeSet.getOriginReplicaName(), new ChangeSet(
+//                this.endpoint.receive(changeSet.getOriginReplicaName(), new ChangeSet(
 //                        changeSet.getOriginReplicaName(),
 //                        originBacklog.getRemoteTime(),
 //                        this.clock.getTime(),
@@ -213,7 +214,7 @@ public class Master {
 //        } catch (ChannelException e) {
 //            unregister(changeSet.getOriginReplicaName());
 //
-//            throw new MasterException("Cannot commit a clearing set.", e);
+//            throw new MasterException("Cannot receive a clearing set.", e);
 //        }
     }
 }

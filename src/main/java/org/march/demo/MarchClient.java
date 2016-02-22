@@ -30,12 +30,12 @@ public class MarchClient {
 //
 //            Replica member = new Replica(id, new Transformer());
 //
-//            final OutboundEndpoint channel = member.getOutbound();
+//            final OutboundEndpoint endpoint = member.getOutbound();
 //
 //            out.writeObject(id);
 //            out.flush();
 //
-//            (new Thread(new ChannelConnector(channel, in, out))).start();
+//            (new Thread(new ChannelConnector(endpoint, in, out))).start();
 //
 //            final List<Pointer> addresses = Collections.synchronizedList(new ArrayList<Pointer>(1));
 //

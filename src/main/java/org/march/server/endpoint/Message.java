@@ -1,11 +1,11 @@
-package org.march.server.channel;
+package org.march.server.endpoint;
 
 import java.util.UUID;
 
 public abstract class Message {
 
 	private UUID replicaName;
-	
+
 	public Message() {		
 	}
 
@@ -20,4 +20,5 @@ public abstract class Message {
     public void setReplicaName(UUID replicaName) {
         this.replicaName = replicaName;
     }
+
 }

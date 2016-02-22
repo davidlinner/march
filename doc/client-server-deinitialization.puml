@@ -1,0 +1,75 @@
+@startuml
+participant Controller
+participant DeactivationListener
+participant DeactivatingListener
+participant Replica
+participant Client
+participant Server
+participant Master
+
+== Initialization ==
+
+Create DeactivationListener
+Controller -> DeactivationListener
+activate Controller
+
+Controller -> Replica: addListener(deactivate:DeactivationListener)
+
+
+Create DeactivatingListener
+Controller -> DeactivatingListener
+
+Controller -> Replica: addListener(deactivating:DeactivatingListener)
+deactivate Controller
+
+Controller -\ Client: unload(replica: Replica)
+activate Client
+
+Replica <- Client: deactivate()
+deactivate Client
+activate Replica
+
+note right of Replica
+Start a round trip with an empty change set to
+enforce clock synchronization and buffer flushing.
+Lock replica for user changes.
+end note
+
+DeactivatingListener <- Replica: deactivating()
+
+Replica -> Client: send(replicaName:uuid, empty: ChangeSet)
+deactivate Replica
+activate Client
+
+Client -->> Server: data(replicaName:uuid, empty: ChangeSet)
+deactivate Client
+activate Server
+
+Server -> Master: send(replicaName:uuid, empty: ChangeSet)
+deactivate Server
+activate Master
+
+Server <- Master: send(replicaName:uuid, empty: ChangeSet)
+deactivate Master
+
+Client <- Server: data(replicaName:uuid, empty: ChangeSet)
+activate Client
+
+Replica <- Client: receive(replicaName:uuid, empty: ChangeSet)
+activate Replica
+
+DeactivationListener <- Replica: deactivated()
+deactivate Replica
+
+loop on incoming messages until status is deactivated
+    Replica <- Client: getStatus()
+
+end
+Client -> Server : stop(replicaName:UUID)
+deactivate Client
+activate Server
+
+Server -> Master : unregister(replicaName:UUID)
+deactivate Server
+
+@enduml

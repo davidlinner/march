@@ -18,7 +18,7 @@ public class MarchServer {
 //
 //        while (true) {
 //            try {
-//                Socket socket = serverSocket.delegate();
+//                Socket socket = serverSocket.receive();
 //                System.out.println("Client connected ...");
 //
 //                ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
@@ -30,9 +30,9 @@ public class MarchServer {
 //
 //                leader.register(id);
 //
-////                OutboundEndpoint channel = leader.getOutbound(id);
+////                OutboundEndpoint endpoint = leader.getOutbound(id);
 ////
-////                (new Thread(new ChannelConnector(channel, in, out))).start();
+////                (new Thread(new ChannelConnector(endpoint, in, out))).start();
 ////
 ////                System.out.println("Accepted connection for: " + id);
 //

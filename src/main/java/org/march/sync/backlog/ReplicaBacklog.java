@@ -1,6 +1,6 @@
 package org.march.sync.backlog;
 
-import org.march.sync.channel.ChangeSet;
+import org.march.sync.endpoint.ChangeSet;
 import org.march.sync.transform.Transformer;
 
 public class ReplicaBacklog extends Backlog {

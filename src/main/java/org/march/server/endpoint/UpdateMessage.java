@@ -1,22 +1,22 @@
-package org.march.server.channel;
+package org.march.server.endpoint;
 
-import org.march.sync.channel.ChangeSet;
+import org.march.sync.endpoint.ChangeSet;
 
 import java.util.UUID;
 
-public class CommitMessage extends Message {
+public class UpdateMessage extends Message {
 
 	private ChangeSet changeSet;
 
     private String scope;
 
-	public CommitMessage() {
+	public UpdateMessage() {
 	}
 
-    public CommitMessage(String scope, UUID replicaName, ChangeSet changeSet) {
+    public UpdateMessage(String scope, UUID replicaName, ChangeSet changeSet) {
         super(replicaName);
-        this.scope = scope;
         this.changeSet = changeSet;
+        this.scope = scope;
     }
 
     public ChangeSet getChangeSet() {

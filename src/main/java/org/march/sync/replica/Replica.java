@@ -9,7 +9,7 @@ import org.march.data.model.*;
 import org.march.data.simple.SimpleModel;
 import org.march.sync.Clock;
 import org.march.sync.backlog.*;
-import org.march.sync.channel.*;
+import org.march.sync.endpoint.*;
 import org.march.sync.transform.Transformer;
 
 
@@ -25,15 +25,13 @@ public class Replica {
 
     private HashSet<Listener> listeners = new HashSet<Listener>();
 
-    private CommitListener commitListener;
-
     private ReplicaState state = ReplicaState.INACTIVE;
 
-    private CommitChannel commitChannel;
+    private UpdateEndpoint endpoint;
 
-    public Replica(CommitChannel commitChannel){
+    public Replica(UpdateEndpoint endpoint){
         this.clock  = new Clock();
-        this.commitChannel = commitChannel;
+        this.endpoint = endpoint;
     }
 
     public ReplicaState getState() {
@@ -47,15 +45,16 @@ public class Replica {
         this.masterBacklog = new MasterBacklog(transformer);
         this.model   = new SimpleModel();
 
-        commitChannel.addReceiveListener(this.commitListener = new CommitListener() {
+        endpoint.setUpdateListener(new UpdateListener() {
             @Override
-            public void commit(UUID replicaName, ChangeSet changeSet) throws CommitException {
+            public void receive(UUID replicaName, ChangeSet changeSet) throws UpdateException {
 
-                if(state == ReplicaState.ACTIVE && !replicaName.equals(name)) throw new CommitException("Not the right receiver.");
+                if (state == ReplicaState.ACTIVE && !replicaName.equals(name))
+                    throw new UpdateException("Not the right receiver.");
                 try {
                     Replica.this.update(changeSet);
                 } catch (ReplicaException e) {
-                    throw new CommitException("Cannot commit received changeSet.", e);
+                    throw new UpdateException("Cannot process received changeSet.", e);
                 }
             }
         });
@@ -71,13 +70,13 @@ public class Replica {
         }
 
         try {
-            this.commitChannel.commit(this.name, new ChangeSet(
+            this.endpoint.send(this.name, new ChangeSet(
                     this.name,
                     this.clock.getTime(),
                     masterBacklog.getRemoteTime(),
                     Collections.emptyList()));
-        } catch (CommitException e) {
-             throw new ReplicaException("Cannot commit empty change set.", e);
+        } catch (UpdateException e) {
+             throw new ReplicaException("Cannot send empty change set.", e);
         }
     }
 
@@ -88,7 +87,7 @@ public class Replica {
             if(listener instanceof InvalidationListener) ((InvalidationListener) listener).invalidated(this);
         }
 
-        this.commitChannel.removeReceiveListener(this.commitListener);
+        this.endpoint.setUpdateListener(null);
     }
 
     private synchronized void update(ChangeSet changeSet) throws ReplicaException {
@@ -104,7 +103,7 @@ public class Replica {
 
                 clock.setTime(changeSet.getReplicaTime());
             } catch (ObjectException | CommandException e) {
-                throw new ReplicaException("Cannot initialize member.", e);
+                throw new ReplicaException("Cannot initialize replica.", e);
             }
 
             state = ReplicaState.ACTIVE;
@@ -114,7 +113,7 @@ public class Replica {
             }
 
         } else {
-            if (!ReplicaState.isAcceptingRemoteChanges(state)) throw new ReplicaException("Can only delegate updates when sharing data or terminating.");
+            if (!ReplicaState.isAcceptingRemoteChanges(state)) throw new ReplicaException("Can only receive updates when sharing data or terminating.");
 
             try {
                 changeSet = this.masterBacklog.update(changeSet);
@@ -146,7 +145,7 @@ public class Replica {
             if(listener instanceof DeactivationListener) ((DeactivationListener) listener).deactivated(this);
         }
 
-        this.commitChannel.removeReceiveListener(this.commitListener);
+        this.endpoint.setUpdateListener(null);
     }
 
     public synchronized void apply(Pointer pointer, Command command) throws ReplicaException {
@@ -160,14 +159,14 @@ public class Replica {
 
             masterBacklog.append(changeSet);
 
-            //this.channelListener.commit(null, changeSet);
-            this.commitChannel.commit(this.name, changeSet);
+            //this.channelListener.receive(null, changeSet);
+            this.endpoint.send(this.name, changeSet);
         } catch (BacklogException e) {
             throw new ReplicaException(e);
         } catch (ObjectException|CommandException e){
             throw new ReplicaException(e);
-        } catch (CommitException e) {
-            throw new ReplicaException("Cannot commit changes.", e);
+        } catch (UpdateException e) {
+            throw new ReplicaException("Cannot receive changes.", e);
         }
     }
 

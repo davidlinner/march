@@ -7,6 +7,7 @@ import java.util.List;
 /**
  * Created by dli on 15.02.2016.
  */
+@Deprecated
 public class AggregateException extends Exception {
 
     private LinkedList<Exception> exceptions = new LinkedList<>();

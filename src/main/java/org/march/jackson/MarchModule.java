@@ -3,7 +3,7 @@ package org.march.jackson;
 import org.march.data.model.Command;
 import org.march.data.model.Constant;
 import org.march.data.model.Data;
-import org.march.sync.channel.ChangeSet;
+import org.march.sync.endpoint.ChangeSet;
 
 import com.fasterxml.jackson.databind.module.SimpleModule;
 

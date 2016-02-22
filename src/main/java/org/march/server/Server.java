@@ -1,10 +1,11 @@
 package org.march.server;
 
-import org.march.server.channel.*;
+import org.march.server.endpoint.*;
 import org.march.data.Resource;
 import org.march.data.ResourceConnector;
-import org.march.sync.channel.ChangeSet;
-import org.march.sync.channel.CommitException;
+import org.march.sync.endpoint.ChangeSet;
+import org.march.sync.endpoint.UpdateException;
+import org.march.sync.master.DuplicateRegistrationException;
 import org.march.sync.master.Master;
 import org.march.sync.master.MasterException;
 import org.march.sync.master.MasterState;
@@ -20,9 +21,7 @@ public class Server {
 
     private Map<String, Master> masters;
 
-    private Map<UUID, MessageChannel> routes;
-
-    private Map<MessageChannel, MessageListener> messageListeners;
+    private Map<UUID, MessageEndpoint> routes;
 
     public Server(){
         this.transformers = Collections.synchronizedMap(new HashMap<>());
@@ -31,7 +30,6 @@ public class Server {
 
         this.routes = Collections.synchronizedMap(new HashMap<>());
 
-        this.messageListeners = Collections.synchronizedMap(new HashMap<>());
     }
 
     public void start(){
@@ -43,27 +41,24 @@ public class Server {
         //overkill
     }
 
-    public void addClient(MessageChannel messageChannel){
+    public void addClient(MessageEndpoint messageEndpoint){
         // todo: check state
 
         MessageListener messageListener = new MessageListener() {
             @Override
-            public void send(Message message) {
-                Server.this.receive(messageChannel, message);
+            public void receive(Message message) {
+                Server.this.receive(messageEndpoint, message);
             }
         };
 
-        messageListeners.put(messageChannel, messageListener);
-        messageChannel.addMessageListener(messageListener);
+        messageEndpoint.setMessageListener(messageListener);
     }
 
-    public void removeClient(MessageChannel messageChannel){
-        MessageListener messageListener = messageListeners.remove(messageChannel);
-        if(messageListener != null){
-            messageChannel.removeMessageListener(messageListener);
+    public void removeClient(MessageEndpoint messageEndpoint){
+        messageEndpoint.setMessageListener(null);
 
-            //todo: look for all know routes for replicas, remove routes and unregister replicas from master
-        } //todo: else throw server exception
+        //todo: look for all know routes for replicas, remove routes and unregister replicas from master
+        //todo: else throw server exception
     }
 
     public void addTransformer(String schema, Transformer transformer){
@@ -82,49 +77,66 @@ public class Server {
         this.resourceConnector = resourceConnector;
     }
 
-    private void receive(MessageChannel channel, Message message){
-        if(message instanceof CommitMessage){
-            receive(channel, (CommitMessage)message);
+    private void receive(MessageEndpoint endpoint, Message message){
+        if(message instanceof UpdateMessage){
+            receive(endpoint, (UpdateMessage)message);
         } else if (message instanceof ReplicateMessage){
-            receive(channel, (ReplicateMessage)message);
+            receive(endpoint, (ReplicateMessage)message);
         }
     }
 
-    private void receive(MessageChannel channel, CommitMessage commitMessage){
-        String scope = commitMessage.getScope();
+    private void receive(MessageEndpoint endpoint, UpdateMessage updateMessage){
+        String scope = updateMessage.getScope();
         Master master = masters.get(scope);
         try {
-            AbstractCommitChannel commitChannel = (AbstractCommitChannel)master.getCommitChannel();
-            commitChannel.delegate(commitMessage.getReplicaName(), commitMessage.getChangeSet());
-        } catch (CommitException e) {
-            //todo: commit error message 5x
+            AbstractUpdateEndpoint updateEndpoint = (AbstractUpdateEndpoint)master.getEndpoint();
+            updateEndpoint.receive(updateMessage.getReplicaName(), updateMessage.getChangeSet());
+        } catch (UpdateException e) {
+            endpoint.send(
+                    new ErrorMessage(
+                            updateMessage.getReplicaName(),
+                            String.format("Cannot delegate update for replica '%s'.", updateMessage.getReplicaName()),
+                            ErrorCode.INTERNAL_SERVER_ERROR));
         }
     }
 
-    private void receive(MessageChannel channel, ReplicateMessage replicateMessage){
+    private void receive(MessageEndpoint endpoint, ReplicateMessage replicateMessage){
         Master master = null;
 
         synchronized (masters) {
-            if (masters.get(replicateMessage.getScope()).getState() != MasterState.ACTIVE) {
-                //todo: commit error or avoid at all 4x
+            if (masters.containsKey(replicateMessage.getScope()) &&
+                    masters.get(replicateMessage.getScope()).getState() != MasterState.ACTIVE) {
+
+                // todo: sort out when this situation could occur
+                endpoint.send(new ErrorMessage(replicateMessage.getReplicaName(), "Master not active.", ErrorCode.METHOD_NOT_ALLOWED));
+
             } else if (!masters.containsKey(replicateMessage.getScope())) {
 
                 String scope = replicateMessage.getScope();
                 Resource resource = resourceConnector.get(scope);
                 if (resource == null) {
-                    //todo: try commit error message 4x
+                    endpoint.send(
+                            new ErrorMessage(
+                                    replicateMessage.getReplicaName(),
+                                    String.format("Resource '%s' not found.", replicateMessage.getScope()),
+                                    ErrorCode.RESOURCE_NOT_FOUND));
+
                 }
 
                 Transformer transformer = transformers.get(resource.getType());
                 if (transformer == null) {
-                    // todo: try sending error message 4x
+                    endpoint.send(
+                            new ErrorMessage(
+                                    replicateMessage.getReplicaName(),
+                                    String.format("No transformer for operations on '%s' found.", replicateMessage.getScope()),
+                                    ErrorCode.UNSUPPORTED_MEDIA_TYPE));
                 }
 
-                master = new Master(new AbstractCommitChannel() {
+                master = new Master(new AbstractUpdateEndpoint() {
                     @Override
-                    public void commit(UUID replicaName, ChangeSet changeSet) throws CommitException {
-                        MessageChannel channel = Server.this.routes.get(replicaName);
-                        channel.send(new CommitMessage(scope, replicaName, changeSet));
+                    public void send(UUID replicaName, ChangeSet changeSet) throws UpdateException {
+                        MessageEndpoint channel = Server.this.routes.get(replicaName);
+                        channel.send(new UpdateMessage(scope, replicaName, changeSet));
                     }
                 });
 
@@ -132,19 +144,37 @@ public class Server {
 
                 try {
                     master.activate(resource, transformer);
+                } catch (DuplicateRegistrationException e) {
+                    endpoint.send(
+                            new ErrorMessage(
+                                    replicateMessage.getReplicaName(),
+                                    String.format("Replica already registered '%s'.", replicateMessage.getScope()),
+                                    ErrorCode.DUPLICATE_REGISTRATION));
                 } catch (MasterException e) {
-                    // todo: commit error message 5x
+                    endpoint.send(
+                            new ErrorMessage(
+                                    replicateMessage.getReplicaName(),
+                                    String.format("Cannot initialize replication master for '%s'.", replicateMessage.getScope()),
+                                    ErrorCode.INTERNAL_SERVER_ERROR));
                 }
             }
         }
 
-        this.routes.put(replicateMessage.getReplicaName(), channel);
+        this.routes.put(replicateMessage.getReplicaName(), endpoint);
 
         try {
             master.register(replicateMessage.getReplicaName());
         } catch (MasterException e) {
-            //todo: commit error message
+            endpoint.send(
+                    new ErrorMessage(
+                            replicateMessage.getReplicaName(),
+                            String.format("Failed to register replica for '%s'.", replicateMessage.getScope()),
+                            ErrorCode.INTERNAL_SERVER_ERROR));
         }
+    }
+
+    private void receive(MessageEndpoint endpoint, ErrorMessage errorMessage){
+        //todo: something smart
     }
 
 }

@@ -1,4 +1,4 @@
-package org.march.sync.channel;
+package org.march.sync.endpoint;
 
 import java.io.Serializable;
 import java.util.List;
